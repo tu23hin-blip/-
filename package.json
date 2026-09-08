@@ -1,0 +1,22 @@
+{
+  "name": "media-asp-autopilot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "広告代理店ASP（クライアント→代理店→メディア）のメディア機能を自走させる統合基盤",
+  "engines": { "node": ">=22.6.0" },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/index.ts",
+    "api": "node --env-file-if-exists=.env src/index.ts --only=api",
+    "worker": "node --env-file-if-exists=.env src/index.ts --only=worker",
+    "migrate": "node --env-file-if-exists=.env src/db/migrate.ts",
+    "seed": "node --env-file-if-exists=.env src/db/seed.ts",
+    "cli": "node --env-file-if-exists=.env src/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test \"tests/*.test.ts\""
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^22.10.0"
+  }
+}
