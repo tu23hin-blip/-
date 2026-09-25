@@ -1,0 +1,40 @@
+{
+  "genres": [
+    {
+      "genre_id": "ai-note-automation",
+      "name": "AI × note運営の自動化",
+      "status": "active",
+      "target_reader": "AIを触ったことはあるが、noteやXの発信を収益につなげられていない会社員・個人事業主",
+      "why_pay": "記事づくり・図解・X運用にかかる時間を減らす具体的な手順とテンプレートが手に入る",
+      "experiment_angle": "AI編集部そのものを運用し、制作時間・PV・売上を記録して公開する",
+      "paid_assets": ["プロンプト全文", "テンプレート", "チェックリスト", "実データ"],
+      "needs_separate_account": false,
+      "test_plan": { "x_posts": 10, "free_notes": 2, "paid_notes": 1, "days": 14 },
+      "success_criteria": { "note_pv": 1000, "x_profile_clicks": 200, "paid_sales": 5, "is_provisional": true },
+      "magazine": "AI編集部 実験ログ",
+      "brand": "AI編集部",
+      "colors": { "primary": "#6657df", "secondary": "#2b2548", "accent": "#f5a76a" },
+      "style_guide": "です・ます調。専門用語は最初に一言で説明する。数字は実測値かリサーチ結果にあるものだけを使い、例として出す数字には「例」と明記する。",
+      "test_started_at": "2026-09-25",
+      "created_at": "2026-09-25"
+    },
+    {
+      "genre_id": "ai-ad-creative",
+      "name": "AI × 広告クリエイティブ",
+      "status": "testing",
+      "target_reader": "SNS広告を小さく回している個人事業主・中小企業の担当者。クリエイティブ作りに時間と外注費がかかっている",
+      "why_pay": "広告文・バナーの案出しと検証の型が手に入り、外注費と作業時間を減らせる",
+      "experiment_angle": "AIで作った広告文・バナー案を少額で配信し、クリック率とCPAを比べる",
+      "paid_assets": ["広告文のプロンプト", "媒体別のテンプレート", "検証の記録シート"],
+      "needs_separate_account": false,
+      "test_plan": { "x_posts": 10, "free_notes": 2, "paid_notes": 1, "days": 14 },
+      "success_criteria": { "note_pv": 600, "x_profile_clicks": 120, "paid_sales": 3, "is_provisional": true },
+      "magazine": "AI × 広告クリエイティブ",
+      "brand": "AI編集部",
+      "colors": { "primary": "#0f8b8d", "secondary": "#12343b", "accent": "#f2c14e" },
+      "style_guide": "です・ます調。広告の専門用語（CPA・CTRなど）は最初に一言で説明する。薬機法・景品表示法に触れる表現は使わない。",
+      "test_started_at": "2026-09-25",
+      "created_at": "2026-09-25"
+    }
+  ]
+}
