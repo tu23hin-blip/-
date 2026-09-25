@@ -10,9 +10,9 @@ Cron 6:00
  → HTTP Request: Googleトレンド / ニュースRSS（複数）
  → X API: 自分の直近7日の投稿と指標（GET /2/users/:id/tweets?tweet.fields=public_metrics）
  → Google Sheets: patterns シートを読む（勝ちパターンDB）
- → LLM「AI編集長」(prompts/01-editor-in-chief.md)
-      出力：ネタ候補10件（JSON）と各指標の0〜10評価
- → Code: スコア計算（engine.js の scoreTopic と同じ式）
+ → LLM「AI編集長」(prompts/02-editor-in-chief.md)
+      出力：ネタ候補（JSON）と各指標の0〜100評価
+ → Code: スコア計算（0〜10に換算して engine.js の scoreTopic と同じ式）
  → Google Sheets: topics シートに追記（status = 候補）
  → Slack/LINE通知：「今日のネタ候補 上位3件」
 ```
@@ -21,9 +21,9 @@ Cron 6:00
 
 ```
 Google Sheets Trigger（行の更新）
- → LLM リサーチ・構成 (prompts/02-note-writer.md の Step1〜2)
- → LLM 本文・タイトル案5つ・アイキャッチ案・無料/有料の境界・CTA (Step3〜5)
- → LLM セルフレビュー（事実確認が必要な箇所を列挙）
+ → LLM リサーチ → 構成 (prompts/03-researcher.md, prompts/04-outliner.md)
+ → LLM 本文 → 図解 → アイキャッチ (prompts/05-writer.md, 06-diagrammer.md, 07-eyecatch.md)
+ → LLM 校閲 (prompts/08-reviewer.md)。不合格なら最大2回書き直し
  → Google Docs: 下書きを作成
  → Google Sheets: notes シートに追記（status = レビュー待ち）
  → 通知：「下書きができました（人間の最終チェック待ち）」
@@ -35,7 +35,7 @@ note への公開は人間が行う。公開したら notes.url を入力し、s
 
 ```
 Google Sheets Trigger
- → LLM X変換 (prompts/03-x-repurpose.md)：短文3、ノウハウ2、長文1、誘導1
+ → LLM X変換 (prompts/09-x-converter.md)：短文3、ノウハウ2、長文1、誘導1
  → Code: 類似度チェック（engine.js の findNearDuplicates。過去30日の投稿も対象）
       類似度0.6以上 → LLMで書き直す（最大2回）→ まだ類似なら人間に回す
  → Code: planSchedule に従って投稿枠へ割り当てる（導線は1日1本まで）
@@ -63,7 +63,7 @@ Cron 23:00
 Cron 月曜 7:00
  → Google Sheets: performance / posts を読む
  → Code: extractPatterns + insights（テーマ・Hook・価格ごとの平均比）
- → LLM「アナリスト」(prompts/04-analyst.md)：なぜ勝ったかの仮説と、来週の実験を3つ
+ → LLM「アナリスト」(prompts/11-analyst.md)：なぜ勝ったかの仮説と、来週の実験を3つ
  → Google Sheets: patterns シートを更新（WF1 が翌朝から参照する）
  → 通知：週次レポート
 ```

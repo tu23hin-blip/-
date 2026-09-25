@@ -1,3 +1,8 @@
 node_modules/
 dist/
 .env
+output/
+data/ideas.jsonl
+data/scout_log.jsonl
+data/reports/
+data/x_tests.json

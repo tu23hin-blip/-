@@ -4,14 +4,16 @@ import {
   LayoutDashboard, Sparkles, Megaphone, BarChart3, Scale, FileText, Settings,
   Bell, Search, Plus, ChevronDown, ChevronRight, ArrowUpRight, ArrowDownRight,
   Play, MoreHorizontal, Clock3, CheckCircle2, AlertTriangle, Circle, Zap,
-  Video, PenTool, Layers3, WandSparkles, Upload, X, CalendarDays, Bot, Newspaper
+  Video, PenTool, Layers3, WandSparkles, Upload, X, CalendarDays, Bot, Newspaper, Send
 } from 'lucide-react';
 import EditorialPage from './editorial/EditorialPage.jsx';
+import PublishQueuePage from './editorial/PublishQueuePage.jsx';
 import './styles.css';
 
 const nav = [
   { label: 'ダッシュボード', icon: LayoutDashboard },
   { label: 'AI編集部', icon: Newspaper },
+  { label: '投稿待ち', icon: Send },
   { label: 'クリエイティブ', icon: Sparkles, count: 4 },
   { label: '広告運用', icon: Megaphone },
   { label: 'レポート', icon: BarChart3 },
@@ -74,7 +76,7 @@ function Dashboard(){
   const [modal,setModal]=useState(false);
   const [toast,setToast]=useState(false);
   const ActiveIcon=nav.find(n=>n.label===active)?.icon || LayoutDashboard;
-  return <div className="app"><Sidebar active={active} setActive={setActive}/><main><header><div><h1>{active}</h1><p>{active==='AI編集部'?'需要発見 → note制作 → X集客 → データ → 勝ちテーマへ再投資を1本のループに。':'おはようございます、田中さん。今日も広告運用を最適化しましょう。'}</p></div><div className="headerActions"><div className="search"><Search/><input placeholder="検索"/><kbd>⌘ K</kbd></div><button className="bell" onClick={()=>{setToast(true);setTimeout(()=>setToast(false),2500)}}><Bell/><i/></button><button className="primary" onClick={()=>setModal(true)}><Plus/> 新規プロジェクト</button></div></header>{active==='ダッシュボード'?<><div className="notice"><div><Sparkles/><b>AIアップデート</b><span>動画生成モデルがアップデートされました。より自然で高品質な映像を生成できます。</span></div><button>詳細を見る <ChevronRight/></button></div><div className="stats"><Stat title="広告売上" value="¥12,846,320" delta="18.4%" icon={BarChart3} tone="purple" foot="前月比"/><Stat title="広告費" value="¥3,241,800" delta="8.2%" icon={Megaphone} tone="orange" foot="前月比"/><Stat title="ROAS" value="396" unit="%" delta="24.6%" icon={ArrowUpRight} tone="green" foot="目標 350%"/><Stat title="制作中クリエイティブ" value="8" unit="件" delta="2件" down icon={Sparkles} tone="pink" foot="先週比"/></div><div className="mainGrid"><div><Pipeline/><Projects/></div><div><QuickStart onOpen={()=>setModal(true)}/><Activity/><section className="card report"><div className="reportIcon"><CalendarDays/></div><div><span>DAILY REPORT</span><b>本日のレポートは<br/>明日 8:00 に生成されます</b><a>レポート設定 <ArrowUpRight/></a></div></section></div></div></>:active==='AI編集部'?<EditorialPage/>:<div className="emptyState card"><div><ActiveIcon size={30}/></div><h2>{active}</h2><p>この機能はダッシュボードから一元管理できます。データ連携後、ここに詳細が表示されます。</p><button className="primary" onClick={()=>setActive('ダッシュボード')}>ダッシュボードへ戻る</button></div>}</main>{modal&&<Modal close={()=>setModal(false)}/>} {toast&&<div className="toast"><CheckCircle2/> 新しい通知はありません</div>}</div>
+  return <div className="app"><Sidebar active={active} setActive={setActive}/><main><header><div><h1>{active}</h1><p>{active==='AI編集部'?'需要発見 → note制作 → X集客 → データ → 勝ちテーマへ再投資を1本のループに。':active==='投稿待ち'?'AIが作った完成品を確認して、noteとXに投稿するだけ。':'おはようございます、田中さん。今日も広告運用を最適化しましょう。'}</p></div><div className="headerActions"><div className="search"><Search/><input placeholder="検索"/><kbd>⌘ K</kbd></div><button className="bell" onClick={()=>{setToast(true);setTimeout(()=>setToast(false),2500)}}><Bell/><i/></button><button className="primary" onClick={()=>setModal(true)}><Plus/> 新規プロジェクト</button></div></header>{active==='ダッシュボード'?<><div className="notice"><div><Sparkles/><b>AIアップデート</b><span>動画生成モデルがアップデートされました。より自然で高品質な映像を生成できます。</span></div><button>詳細を見る <ChevronRight/></button></div><div className="stats"><Stat title="広告売上" value="¥12,846,320" delta="18.4%" icon={BarChart3} tone="purple" foot="前月比"/><Stat title="広告費" value="¥3,241,800" delta="8.2%" icon={Megaphone} tone="orange" foot="前月比"/><Stat title="ROAS" value="396" unit="%" delta="24.6%" icon={ArrowUpRight} tone="green" foot="目標 350%"/><Stat title="制作中クリエイティブ" value="8" unit="件" delta="2件" down icon={Sparkles} tone="pink" foot="先週比"/></div><div className="mainGrid"><div><Pipeline/><Projects/></div><div><QuickStart onOpen={()=>setModal(true)}/><Activity/><section className="card report"><div className="reportIcon"><CalendarDays/></div><div><span>DAILY REPORT</span><b>本日のレポートは<br/>明日 8:00 に生成されます</b><a>レポート設定 <ArrowUpRight/></a></div></section></div></div></>:active==='AI編集部'?<EditorialPage/>:active==='投稿待ち'?<PublishQueuePage/>:<div className="emptyState card"><div><ActiveIcon size={30}/></div><h2>{active}</h2><p>この機能はダッシュボードから一元管理できます。データ連携後、ここに詳細が表示されます。</p><button className="primary" onClick={()=>setActive('ダッシュボード')}>ダッシュボードへ戻る</button></div>}</main>{modal&&<Modal close={()=>setModal(false)}/>} {toast&&<div className="toast"><CheckCircle2/> 新しい通知はありません</div>}</div>
 }
 
 createRoot(document.getElementById('root')).render(<Dashboard/>);

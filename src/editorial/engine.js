@@ -202,6 +202,9 @@ export function extractPatterns(records, dimensions = ['theme', 'hook', 'price']
 
 const DIM_TEXT = {
   theme: (v) => `「${v}」系の記事が売れる`,
+  genre: (v) => `「${v}」ジャンルの記事が売れる`,
+  article_type: (v) => `「${v}」タイプの記事が売れる`,
+  eyecatch_layout: (v) => `アイキャッチは「${v}」構図が強い`,
   hook: (v) => `「${v}」型のHookはCTRが高い`,
   price: (v) => `${Number(v).toLocaleString('ja-JP')}円でもCVする`,
 };
@@ -214,6 +217,106 @@ export function insights(patterns, minLift = 0.15) {
       const metric = p.dimension === 'hook' ? 'CTR' : 'PVあたり売上';
       return { ...p, text: DIM_TEXT[p.dimension]?.(p.value) || `${p.dimension}=${p.value} が好調`, note: `${metric} 平均比 +${Math.round(lift * 100)}%（n=${p.samples}）` };
     });
+}
+
+// ⑦ X投稿の枠と割り当て -------------------------------------------------------
+
+const shiftDate = (date, days) => {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+const at = (s) => `${s.date} ${s.time}`;
+
+// startDate から days 日分の投稿枠を作り、planSchedule の配分でカテゴリを振る。occupied（'YYYY-MM-DD HH:mm'）の枠は除く
+export function buildSlots({ startDate, days = 7, times, mix = X_MIX, occupied = [] }) {
+  const taken = new Set(occupied);
+  return planSchedule(times.length, days, mix)
+    .flatMap(({ day, posts }) =>
+      posts.map((p, i) => ({ slot_id: `D${day}-${i + 1}`, day, date: shiftDate(startDate, day - 1), time: times[i], category: p.key }))
+    )
+    .filter((s) => !taken.has(at(s)));
+}
+
+// 記事1本分の投稿を1週間に散らす順番（いきなり誘導から始めない）
+const POST_ORDER = ['short', 'knowhow', 'long', 'short', 'cta', 'knowhow', 'short'];
+
+function orderPosts(posts) {
+  const pools = {};
+  posts.forEach((p) => (pools[p.type] ||= []).push(p));
+  const ordered = POST_ORDER.map((t) => pools[t]?.shift()).filter(Boolean);
+  return [...ordered, ...Object.values(pools).flat()];
+}
+
+// AIの割り当てが使えないときの決定的な割り当て。1日1本・カテゴリ一致・時系列順を優先し、枠が足りなければ条件を緩める
+export function assignPostsToSlots(posts, slots, { notePublishAt = '' } = {}) {
+  const sorted = [...slots].sort((a, b) => at(a).localeCompare(at(b)));
+  const used = new Set();
+  const perDay = {};
+  const assignments = [];
+  const unassigned = [];
+  let last = -1;
+  const passes = [
+    { max: 1, match: true, chrono: true },
+    { max: 1, match: false, chrono: true },
+    { max: 1, match: false, chrono: false },
+    { max: 2, match: false, chrono: false },
+    { max: Infinity, match: false, chrono: false },
+  ];
+  for (const post of orderPosts(posts)) {
+    let pick = -1;
+    for (const pass of passes) {
+      pick = sorted.findIndex((s, i) => {
+        const day = perDay[s.date] || [];
+        if (used.has(s.slot_id) || day.length >= pass.max || day.includes(post.type)) return false;
+        if (pass.chrono && i <= last) return false;
+        if (pass.match && s.category !== post.category) return false;
+        if (post.type === 'cta' && notePublishAt && at(s) <= notePublishAt) return false;
+        return true;
+      });
+      if (pick !== -1) break;
+    }
+    if (pick === -1) {
+      unassigned.push(post.id);
+      continue;
+    }
+    const s = sorted[pick];
+    used.add(s.slot_id);
+    (perDay[s.date] ||= []).push(post.type);
+    last = Math.max(last, pick);
+    assignments.push({ post_id: post.id, slot_id: s.slot_id });
+  }
+  return { assignments, unassigned };
+}
+
+// AIが出した割り当てのルール違反を列挙する（空配列なら採用してよい）
+export function validateAssignments(assignments, posts, slots, { notePublishAt = '' } = {}) {
+  const problems = [];
+  const slotById = Object.fromEntries(slots.map((s) => [s.slot_id, s]));
+  const postById = Object.fromEntries(posts.map((p) => [p.id, p]));
+  const seenPosts = new Set();
+  const seenSlots = new Set();
+  const typesPerDay = {};
+  const placed = [];
+  for (const a of assignments || []) {
+    const post = postById[a.post_id];
+    const slot = slotById[a.slot_id];
+    if (!post) { problems.push(`存在しない投稿 ${a.post_id}`); continue; }
+    if (!slot) { problems.push(`存在しない枠 ${a.slot_id}`); continue; }
+    if (seenPosts.has(post.id)) problems.push(`${post.id} が2回割り当てられています`);
+    if (seenSlots.has(slot.slot_id)) problems.push(`枠 ${slot.slot_id} に2本入っています`);
+    seenPosts.add(post.id);
+    seenSlots.add(slot.slot_id);
+    const types = (typesPerDay[slot.date] ||= []);
+    if (types.includes(post.type)) problems.push(`${slot.date} に ${post.type} が2本あります`);
+    types.push(post.type);
+    if (post.type === 'cta' && notePublishAt && at(slot) <= notePublishAt) problems.push(`${post.id} が note 公開前の枠に入っています`);
+    placed.push({ post, slot });
+  }
+  posts.filter((p) => !seenPosts.has(p.id)).forEach((p) => problems.push(`${p.id} が割り当てられていません`));
+  const first = placed.sort((a, b) => at(a.slot).localeCompare(at(b.slot)))[0];
+  if (first?.post.type === 'cta') problems.push('最初の投稿が誘導（cta）になっています');
+  return problems;
 }
 
 // 30日ロードマップ ------------------------------------------------------------

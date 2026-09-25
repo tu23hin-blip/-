@@ -5,6 +5,8 @@ AIライターツールではなく「AI編集部」を作る。
 
 ダッシュボード（`npm start` → サイドバー「AI編集部」）で、ネタのスコアリング、note→X変換、週間投稿プラン、ファネルと勝ちパターンを確認できる。ロジックは `src/editorial/engine.js` にある。
 
+制作そのもの（ネタ選び → リサーチ → 構成 → 本文 → 図解 → アイキャッチ → 校閲 → X投稿）は `npm run produce` で自動化してある。使い方は [pipeline.md](./pipeline.md) を参照。
+
 ---
 
 ## 1. ジャンルとポジション
@@ -121,7 +123,7 @@ X API（予約投稿）   note（下書きを貼り付け、人間が公開）
    └───── AI分析 → 勝ちパターンDB → 翌日のネタに反映 ─────┘
 ```
 
-ワークフローの詳細は [n8n-workflows.md](./n8n-workflows.md)、プロンプトは [`/prompts`](../../prompts)、データの形式は [sheets-schema.md](./sheets-schema.md) を参照。
+このリポジトリには、同じ流れをローカルで実行する制作パイプライン（`src/pipeline/`・[pipeline.md](./pipeline.md)）も入っている。n8n で組む場合のワークフローは [n8n-workflows.md](./n8n-workflows.md)、プロンプトは [ai-editorial-prompts.md](../ai-editorial-prompts.md)（`prompts/` に章ごとのファイル）、データの形式は [sheets-schema.md](./sheets-schema.md) を参照。
 
 ## 8. 規約・リスク管理
 

@@ -1,0 +1,19 @@
+/* 同梱の Noto Sans JP（SIL Open Font License 1.1 / templates/fonts/OFL.txt） */
+@font-face {
+  font-family: "Noto Sans JP";
+  font-weight: 400;
+  font-display: block;
+  src: url("/fonts/NotoSansJP-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Noto Sans JP";
+  font-weight: 700;
+  font-display: block;
+  src: url("/fonts/NotoSansJP-Bold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Noto Sans JP";
+  font-weight: 900;
+  font-display: block;
+  src: url("/fonts/NotoSansJP-Black.woff2") format("woff2");
+}

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>checklist（チェックリスト）</title>
+<link rel="stylesheet" href="/shared/fonts.css">
+<link rel="stylesheet" href="/shared/base.css">
+<style>
+  .checks { width: 100%; display: grid; gap: 16px 32px; align-content: center; }
+  .checks.one { max-width: 900px; }
+  .checks.two { grid-template-columns: 1fr 1fr; grid-auto-flow: column; }
+  .item {
+    display: flex; align-items: center; gap: 20px;
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 18px 26px;
+    min-width: 0;
+  }
+  .box {
+    flex: none;
+    width: 46px; height: 46px; border-radius: 12px;
+    border: 4px solid var(--primary);
+    color: #fff;
+    display: grid; place-items: center;
+  }
+  .box .icon { width: 30px; height: 30px; }
+  .item.on .box { background: var(--primary); }
+  .item.off .box { border-color: #c8c5d6; background: #fff; }
+  .item.off .label { color: var(--muted); }
+  .label { flex: 1; min-width: 0; font-weight: 700; line-height: 1.35; white-space: nowrap; overflow: hidden; }
+  .item.hl { box-shadow: inset 0 0 0 4px var(--accent); }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head"><h1 class="title"></h1><p class="subtitle"></p></header>
+  <section class="body" id="body"></section>
+  <footer class="foot"><span class="footer"></span><span class="brand"></span></footer>
+</main>
+<script src="/shared/diagram.js"></script>
+<script>
+  // items: [{ label, checked, highlight }]。5個以上は2列
+  window.drawBody = function (items, body, { h, svg, ICONS }) {
+    const two = items.length >= 5;
+    const list = h('div', 'checks ' + (two ? 'two' : 'one'));
+    if (two) list.style.gridTemplateRows = `repeat(${Math.ceil(items.length / 2)}, auto)`;
+    items.forEach((item) => {
+      const row = h('div', 'item ' + (item.checked === false ? 'off' : 'on') + (item.highlight ? ' hl' : ''));
+      const box = h('div', 'box');
+      if (item.checked !== false) box.append(svg(ICONS.check));
+      const label = h('div', 'label', item.label);
+      label.dataset.fit = two ? '28,17' : '32,18';
+      row.append(box, label);
+      list.append(row);
+    });
+    body.append(list);
+  };
+
+  window.SAMPLE = {
+    title: '公開前の図解チェック',
+    subtitle: 'サンプル表示',
+    items: [
+      { label: '1枚で伝えることは1つ', checked: true },
+      { label: '1要素は20文字以内', checked: true },
+      { label: '本文と数字が一致している', checked: true },
+      { label: '出典を書いた', checked: false },
+    ],
+    footer: '',
+    brand: 'AI編集部',
+  };
+  if (!window.__NO_SAMPLE__) window.renderDiagram(window.SAMPLE);
+</script>
+</body>
+</html>

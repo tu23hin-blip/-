@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>アイキャッチ（1280×670）</title>
+<link rel="stylesheet" href="/shared/fonts.css">
+<style>
+  :root { --primary: #6657df; --secondary: #2b2548; --accent: #f5a76a; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1280px; height: 670px; overflow: hidden; }
+  body { font-family: "Noto Sans JP", sans-serif; -webkit-font-smoothing: antialiased; font-feature-settings: "palt" 1; }
+
+  .ec { position: relative; width: 1280px; height: 670px; overflow: hidden; color: #fff; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); }
+  .bg { position: absolute; inset: 0; background-size: cover; background-position: center; }
+  .shade { position: absolute; inset: 0; }
+  .ec.has-bg .shade { background: linear-gradient(135deg, color-mix(in srgb, var(--secondary) 78%, transparent), color-mix(in srgb, var(--primary) 62%, transparent)); }
+  .dots { position: absolute; inset: 0; background-image: radial-gradient(rgba(255, 255, 255, 0.13) 2.5px, transparent 2.5px); background-size: 30px 30px; -webkit-mask-image: radial-gradient(ellipse at center, transparent 35%, #000 80%); }
+  .glow { position: absolute; width: 760px; height: 760px; border-radius: 50%; right: -260px; top: -320px; background: radial-gradient(circle, color-mix(in srgb, var(--accent) 55%, transparent), transparent 65%); opacity: 0.55; }
+
+  .content { position: absolute; inset: 0; display: flex; }
+  .badge { display: inline-block; align-self: center; background: var(--accent); color: var(--secondary); font-weight: 900; font-size: 30px; line-height: 1; padding: 12px 26px; border-radius: 999px; letter-spacing: 0.04em; }
+  .main { margin: 0; font-weight: 900; line-height: 1.16; letter-spacing: 0.01em; word-break: auto-phrase; text-wrap: balance; overflow: hidden; text-shadow: 0 6px 26px rgba(0, 0, 0, 0.22); }
+  .sub { font-weight: 700; line-height: 1.35; opacity: 0.95; white-space: nowrap; overflow: hidden; }
+  .brand { position: absolute; left: 0; right: 0; bottom: 26px; text-align: center; font-size: 22px; font-weight: 700; opacity: 0.75; letter-spacing: 0.08em; }
+  .icon-top { width: 92px; height: 92px; margin: 0 auto 18px; opacity: 0.95; }
+  .icon-top svg, .icon-big svg { width: 100%; height: 100%; display: block; }
+
+  /* center_bold: 中央に大きく */
+  .l-center .content { flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 150px 40px; }
+  .l-center .badge { margin-bottom: 26px; }
+  .l-center .main { width: 980px; max-height: 300px; }
+  .l-center .sub { margin-top: 24px; max-width: 980px; }
+
+  /* left_text_right_icon: 左に文字、右にアイコン */
+  .l-left .content { align-items: center; padding: 0 110px 30px 150px; gap: 40px; }
+  .l-left .text { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+  .l-left .badge { align-self: flex-start; margin-bottom: 26px; }
+  .l-left .main { width: 100%; max-height: 300px; }
+  .l-left .sub { margin-top: 22px; max-width: 100%; }
+  .icon-big { flex: none; width: 300px; height: 300px; border-radius: 50%; background: rgba(255, 255, 255, 0.14); border: 3px solid rgba(255, 255, 255, 0.35); padding: 60px; }
+
+  /* before_after_split: 左右に分けて変化を見せる */
+  .l-split .content { flex-direction: column; align-items: center; justify-content: center; padding: 0 110px 50px; }
+  .l-split .badge { margin-bottom: 26px; }
+  .pair { display: grid; grid-template-columns: 1fr 96px 1fr; align-items: center; width: 100%; }
+  .side { border-radius: 26px; padding: 30px 24px; text-align: center; min-width: 0; }
+  .side.before { background: rgba(0, 0, 0, 0.22); }
+  .side.after { background: var(--accent); color: var(--secondary); }
+  .side .tag { font-size: 24px; font-weight: 900; letter-spacing: 0.1em; opacity: 0.85; margin-bottom: 6px; }
+  .side .val { font-weight: 900; line-height: 1.15; white-space: nowrap; overflow: hidden; }
+  .arrow { justify-self: center; width: 70px; height: 70px; }
+  .l-split .sub { margin-top: 30px; max-width: 100%; }
+</style>
+</head>
+<body>
+<div class="ec" id="ec">
+  <div class="bg" id="bg"></div>
+  <div class="shade"></div>
+  <div class="dots"></div>
+  <div class="glow"></div>
+  <div class="content" id="content"></div>
+  <div class="brand" id="brand"></div>
+</div>
+<script>
+  (function () {
+    const fontsReady = Promise.all(['700', '900'].map((w) => document.fonts.load(`${w} 40px "Noto Sans JP"`, 'あ漢A1'))).then(() => document.fonts.ready);
+    const h = (tag, className, text) => {
+      const el = document.createElement(tag);
+      if (className) el.className = className;
+      if (text !== undefined && text !== null) el.textContent = String(text);
+      return el;
+    };
+    // 字面の箱が行の高さより大きいので縦は少し余裕を見る。1行表示の要素は横幅だけ見る
+    const overflows = (el) => {
+      const style = getComputedStyle(el);
+      if (el.scrollWidth > el.clientWidth + 1) return true;
+      return style.whiteSpace !== 'nowrap' && el.scrollHeight > el.clientHeight + Math.max(2, parseFloat(style.fontSize) * 0.3);
+    };
+    const fit = (el, max, min) => {
+      let size = max;
+      el.style.fontSize = `${size}px`;
+      while (size > min && overflows(el)) el.style.fontSize = `${--size}px`;
+      return !overflows(el);
+    };
+    const ARROW = '<svg viewBox="0 0 48 48" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 24h30M28 13l11 11-11 11"/></svg>';
+
+    // data: { layout, main_copy, sub_copy, badge, brand, colors, icon_svg, background }
+    window.renderEyecatch = async function (data) {
+      await fontsReady;
+      for (const key of ['primary', 'secondary', 'accent']) {
+        const v = data.colors && data.colors[key];
+        if (typeof v === 'string' && /^#[0-9a-f]{3,8}$/i.test(v)) document.documentElement.style.setProperty(`--${key}`, v);
+      }
+      const ec = document.getElementById('ec');
+      const content = document.getElementById('content');
+      content.replaceChildren();
+      document.getElementById('brand').textContent = data.brand || '';
+      const bg = document.getElementById('bg');
+      bg.style.backgroundImage = data.background ? `url("${data.background}")` : '';
+
+      const main = String(data.main_copy || '');
+      const split = main.split(/\s*(?:→|⇒|➡)\s*/);
+      const layout = data.layout === 'before_after_split' && split.length === 2 ? 'split' : data.layout === 'left_text_right_icon' ? 'left' : 'center';
+      ec.className = `ec l-${layout}` + (data.background ? ' has-bg' : '');
+      const badge = data.badge ? h('div', 'badge', data.badge) : null;
+      const sub = data.sub_copy ? h('div', 'sub', data.sub_copy) : null;
+      const problems = [];
+
+      if (layout === 'split') {
+        if (badge) content.append(badge);
+        const pair = h('div', 'pair');
+        const side = (kind, tag, text) => {
+          const s = h('div', `side ${kind}`);
+          const v = h('div', 'val', text);
+          s.append(h('div', 'tag', tag), v);
+          return [s, v];
+        };
+        const [before, bv] = side('before', 'BEFORE', split[0]);
+        const [after, av] = side('after', 'AFTER', split[1]);
+        const arrow = h('div', 'arrow');
+        arrow.innerHTML = ARROW;
+        pair.append(before, arrow, after);
+        content.append(pair);
+        if (sub) content.append(sub);
+        if (!fit(bv, 96, 40)) problems.push(split[0]);
+        if (!fit(av, 96, 40)) problems.push(split[1]);
+      } else if (layout === 'left') {
+        const text = h('div', 'text');
+        if (badge) text.append(badge);
+        const m = h('h1', 'main', main);
+        text.append(m);
+        if (sub) text.append(sub);
+        const icon = h('div', 'icon-big');
+        icon.innerHTML = data.icon_svg || '';
+        content.append(text, icon);
+        if (!fit(m, 112, 52)) problems.push(main);
+      } else {
+        if (data.icon_svg && !badge) {
+          const icon = h('div', 'icon-top');
+          icon.innerHTML = data.icon_svg;
+          content.append(icon);
+        }
+        if (badge) content.append(badge);
+        const m = h('h1', 'main', main);
+        content.append(m);
+        if (sub) content.append(sub);
+        if (!fit(m, 132, 56)) problems.push(main);
+      }
+      if (sub && !fit(sub, 46, 26)) problems.push(data.sub_copy);
+      await document.fonts.ready;
+      return problems;
+    };
+
+    window.SAMPLE = { layout: 'center_bold', main_copy: '図解の文字崩れ、0に', sub_copy: '中身はAI・描画はテンプレ', badge: '保存版', brand: 'AI編集部' };
+    if (!window.__NO_SAMPLE__) window.renderEyecatch(window.SAMPLE);
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>before_after（ビフォーアフター）</title>
+<link rel="stylesheet" href="/shared/fonts.css">
+<link rel="stylesheet" href="/shared/base.css">
+<style>
+  .ba { width: 100%; height: 100%; max-height: 450px; display: grid; grid-template-columns: 1fr 84px 1fr; align-items: stretch; }
+  .panel { min-width: 0; border-radius: 24px; padding: 28px 32px; display: flex; flex-direction: column; }
+  .panel.before { background: #f0eff4; }
+  .panel.after { background: var(--primary); color: #fff; }
+  .tag { font-size: 26px; font-weight: 900; letter-spacing: 0.04em; margin-bottom: 18px; white-space: nowrap; overflow: hidden; }
+  .before .tag { color: var(--muted); }
+  .after .tag { color: #fff; opacity: 0.92; }
+  ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; flex: 1; justify-content: center; }
+  li { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .mark { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; }
+  .mark .icon { width: 22px; height: 22px; }
+  .before .mark { background: #dddbe6; color: #8b889c; }
+  .after .mark { background: rgba(255, 255, 255, 0.22); color: #fff; }
+  .txt { flex: 1; min-width: 0; font-weight: 700; line-height: 1.35; white-space: nowrap; overflow: hidden; }
+  .before .txt { color: #4f4c63; }
+  .mid { display: grid; place-items: center; color: var(--primary); }
+  .mid .icon { width: 56px; height: 56px; }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head"><h1 class="title"></h1><p class="subtitle"></p></header>
+  <section class="body" id="body"></section>
+  <footer class="foot"><span class="footer"></span><span class="brand"></span></footer>
+</main>
+<script src="/shared/diagram.js"></script>
+<script>
+  // items: { before: [...], after: [...], before_label, after_label }
+  window.drawBody = function (items, body, { h, svg, ICONS }) {
+    const rows = Math.max(items.before.length, items.after.length);
+    const size = rows <= 3 ? 31 : rows <= 5 ? 27 : 23;
+    const panel = (kind, label, list, icon) => {
+      const p = h('div', 'panel ' + kind);
+      const tag = h('div', 'tag', label);
+      tag.dataset.fit = '26,18';
+      const ul = h('ul');
+      list.forEach((text) => {
+        const li = h('li');
+        const mark = h('span', 'mark');
+        mark.append(svg(icon));
+        const txt = h('span', 'txt', text);
+        txt.dataset.fit = `${size},16`;
+        li.append(mark, txt);
+        ul.append(li);
+      });
+      p.append(tag, ul);
+      return p;
+    };
+    const ba = h('div', 'ba');
+    const mid = h('div', 'mid');
+    mid.append(svg(ICONS.arrow));
+    ba.append(panel('before', items.before_label || 'Before', items.before, ICONS.cross), mid, panel('after', items.after_label || 'After', items.after, ICONS.check));
+    body.append(ba);
+  };
+
+  window.SAMPLE = {
+    title: '文字が崩れる原因と対策',
+    subtitle: 'サンプル表示',
+    items: {
+      before_label: 'よくある作り方',
+      after_label: '分業した作り方',
+      before: ['AIに文字まで描かせる', '日本語がにじむ・化ける', '1枚ずつ手直しが必要'],
+      after: ['中身だけAIが決める', '文字はフォントで描画', '何枚でも同じ品質'],
+    },
+    footer: '',
+    brand: 'AI編集部',
+  };
+  if (!window.__NO_SAMPLE__) window.renderDiagram(window.SAMPLE);
+</script>
+</body>
+</html>
