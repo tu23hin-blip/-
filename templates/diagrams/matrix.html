@@ -56,6 +56,22 @@
     body.append(mx);
   };
 
+  // 点が近くてラベルが重なったら、後のラベルを上下にずらす（点の位置は動かさない）
+  window.afterFit = function (body) {
+    const placed = [];
+    body.querySelectorAll('.lbl').forEach((lbl) => {
+      let shift = 0;
+      for (let i = 0; i < 8; i += 1) {
+        const r = lbl.getBoundingClientRect();
+        const hit = placed.find((p) => r.left < p.right && r.right > p.left && r.top < p.bottom && r.bottom > p.top);
+        if (!hit) break;
+        shift += r.top + r.height / 2 < hit.top + hit.height / 2 ? -(r.bottom - hit.top + 4) : hit.bottom - r.top + 4;
+        lbl.style.transform = `translateY(${shift}px)`;
+      }
+      placed.push(lbl.getBoundingClientRect());
+    });
+  };
+
   window.SAMPLE = {
     title: '自動化する作業の優先順位',
     subtitle: 'サンプル表示（横：手間の少なさ、縦：効果）',

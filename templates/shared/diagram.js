@@ -81,6 +81,8 @@
     body.replaceChildren();
     window.drawBody(data.items, body, { h, svg, ICONS, data });
     fitAll(document);
+    // 文字の大きさが決まった後の調整（ラベルの重なりを避けるなど）はテンプレート側で行う
+    if (typeof window.afterFit === 'function') window.afterFit(body);
     await document.fonts.ready;
     window.__RENDERED__ = true;
     return findOverflow(document);
