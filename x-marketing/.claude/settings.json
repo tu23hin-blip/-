@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(/logs/**)",
+      "Edit(/knowledge/**)",
+      "Edit(/data/**)",
+      "Edit(/dashboard/**)",
+      "Edit(/inbox/posted.md)",
+      "Bash(TZ=Asia/Tokyo date *)",
+      "Bash(date *)",
+      "Bash(python3 scripts/count_chars.py *)",
+      "Bash(python3 scripts/build_dashboard.py *)",
+      "WebSearch",
+      "WebFetch"
+    ],
+    "deny": [
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(nc *)",
+      "Bash(ncat *)",
+      "Bash(netcat *)",
+      "Bash(telnet *)",
+      "Bash(ssh *)",
+      "Bash(scp *)",
+      "Bash(sftp *)",
+      "Bash(ftp *)",
+      "Bash(rsync *)",
+      "Bash(http *)",
+      "Bash(https *)",
+      "Bash(xh *)"
+    ]
+  }
+}

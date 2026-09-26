@@ -1,0 +1,16 @@
+# 個人データ・運用データは Git に入れない（テンプレートは templates/ にある）
+/inbox/
+/knowledge/
+/data/
+/logs/*
+!/logs/.gitkeep
+/dashboard/index.html
+
+# Claude Code の個人設定
+/.claude/settings.local.json
+
+# 作業中にできるファイル
+__pycache__/
+*.pyc
+*.tmp
+.DS_Store
