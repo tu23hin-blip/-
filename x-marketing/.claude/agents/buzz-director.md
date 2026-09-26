@@ -68,4 +68,4 @@ logs/当日/ の全成果物と checks.md を読み、以下で判定する。
 - approval.json には、投稿・実行の候補をすべて入れる：勝負ポスト全案／通常ポスト全案／引用全案／交流リプ全案／自分へのリプへの返信（「返信しない推奨」は text を "" にして reason に理由）／いいね全件／記事・スレッドの各投稿と告知ポスト（ある日のみ）／導線案（ある日のみ）
 - recommended：勝負ポストは1位だけ true（予備は false）、通常ポストは採用する本数ぶん true、引用はおすすめ1本、リプは上位5件、いいねはすべて true
 - NG のものは recommended を false にする
-- JSON は正しい形式で書く（本文中の " は \" 、改行は \n にする）。書き終えたら、メインセッションが `python3 scripts/build_dashboard.py --check YYYY-MM-DD` で検証する。エラーを伝えられたら、その箇所を直す
+- JSON ファイルには JSON だけを書く（説明文・```json の囲み・2つ目の { } を書かない）。本文中の " は \" 、改行は \n にする。書き終えたら、メインセッションが `python3 scripts/build_dashboard.py --check YYYY-MM-DD` で検証する。エラーを伝えられたら、その箇所を直す

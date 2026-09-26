@@ -539,9 +539,12 @@ def load_learnings():
         if not content.strip():
             continue
         m = re.search(r"\d{4}-\d{2}-\d{2}", content)
+        shown = content
+        if m:
+            shown = re.sub(r"^(~~)?\s*" + re.escape(m.group(0)) + r"\s*[｜|／/]\s*", r"\1", content)
         entries.append({
             "date": m.group(0) if m else "",
-            "html": inline_md(content),
+            "html": inline_md(shown),
             "struck": content.strip().startswith("~~"),
             "order": idx,
         })
@@ -636,7 +639,7 @@ def load_day(date, logged_ids, with_files=False):
     return day
 
 
-def adoption_series(days, logged_ids):
+def adoption_series(days, logged_ids, today):
     out = []
     for date in sorted(days):
         approval = days[date].get("approval")
@@ -644,6 +647,8 @@ def adoption_series(days, logged_ids):
             continue
         postable = [it for it in approval["items"] if it.get("kind") != "like" and (it.get("text") or "").strip()]
         posted = sum(1 for it in postable if f"{date}#{it['id']}" in logged_ids)
+        if date == today and posted == 0:
+            continue  # 今日はまだ途中。1件も記録がないうちは 0% と表示しない
         out.append({"date": date, "total": len(postable), "posted": posted,
                     "rate": (posted / len(postable)) if postable else None})
     return out
@@ -695,7 +700,7 @@ def build(verbose=True):
         "learnings": learnings,
         "weekly": load_weekly(dates),
         "inbox": inbox_status(now),
-        "adoption": adoption_series(days, logged_ids),
+        "adoption": adoption_series(days, logged_ids, today),
     }
     page = TEMPLATE.replace("__GENERATED__", html.escape(payload["generated_at"] + "（JST）"))
     page = page.replace("__DATA__", json_for_html(payload))
@@ -2275,7 +2280,7 @@ select{border:1px solid var(--border-strong);background:var(--surface);border-ra
       if (teams.length) {
         body.appendChild(h('div', { class: 'md-table' }, h('table', null,
           h('thead', null, h('tr', null, ['チーム', '状態', '件数', 'NG', 'メモ'].map((x, i) => h('th', { class: i === 2 || i === 3 ? 'num' : null, text: x })))),
-          h('tbody', null, teams.map(t => { const meta = STATUS_META[t.status]; const lab = (DATA.teams.find(x => x.name === t.name) || {}).label || t.name; return h('tr', null, h('td', { text: lab }), h('td', null, meta ? badge(meta) : String(t.status)), h('td', { class: 'num', text: isNum(t.items) ? String(t.items) : '—' }), h('td', { class: 'num', text: isNum(t.ng) ? String(t.ng) : '—' }), h('td', { text: t.note || '' })); })))));
+          h('tbody', null, teams.map(t => { const meta = STATUS_META[t.status]; const lab = (DATA.teams.find(x => x.name === t.name) || {}).label || t.name; return h('tr', null, h('td', { class: 'nowrap', text: lab }), h('td', { class: 'nowrap' }, meta ? badge(meta) : String(t.status)), h('td', { class: 'num', text: isNum(t.items) ? String(t.items) : '—' }), h('td', { class: 'num', text: isNum(t.ng) ? String(t.ng) : '—' }), h('td', { text: t.note || '' })); })))));
       } else body.appendChild(empty('データがありません'));
       body.appendChild(h('h3', { text: '案の一覧（approval.json）' }));
       const items = ap && Array.isArray(ap.items) ? ap.items.filter(i => i.kind !== 'like') : [];
@@ -2283,7 +2288,7 @@ select{border:1px solid var(--border-strong);background:var(--surface);border-ra
       if (items.length) {
         body.appendChild(h('div', { class: 'md-table' }, h('table', null,
           h('thead', null, h('tr', null, ['時間', '種類', '型', 'チェック', 'おすすめ', '投稿', '本文（1行目）'].map(x => h('th', { text: x })))),
-          h('tbody', null, items.map(it => h('tr', null, h('td', { text: it.time || '—' }), h('td', { text: KL[it.kind] || it.kind }), h('td', { text: it.type || '' }),
+          h('tbody', null, items.map(it => h('tr', null, h('td', { class: 'nowrap', text: it.time || '—' }), h('td', { class: 'nowrap', text: KL[it.kind] || it.kind }), h('td', { text: it.type || '' }),
             h('td', null, CHECK_META[it.check] ? badge(CHECK_META[it.check]) : String(it.check || '')), h('td', { text: it.recommended ? '★' : '' }),
             h('td', { text: it._logged ? '記録済み' : '' }), h('td', { text: (it.text || '（返信しない推奨）').split('\n')[0].slice(0, 40) })))))));
         if (likeN) body.appendChild(h('p', { class: 'hint', style: 'margin-top:8px', text: 'このほかに、いいねリスト ' + likeN + '件' }));
