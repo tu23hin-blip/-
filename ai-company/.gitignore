@@ -1,0 +1,31 @@
+# 秘密情報
+.env
+.env.*
+!.env.example
+
+# 成果物（下書き）はgit管理しない。フォルダだけ残す
+outputs/*
+!outputs/.gitkeep
+
+# SQLite データベース本体
+engine/db/*.db
+engine/db/*.db-journal
+engine/db/*.db-wal
+engine/db/*.db-shm
+
+# Node / Next.js
+node_modules/
+web/.next/
+web/out/
+*.log
+npm-debug.log*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# OS / エディタ
+.DS_Store
+.vscode/
+.idea/
