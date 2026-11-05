@@ -8,7 +8,7 @@ const HYPE = [
   [/月\s*[0-9０-９]+\s*万(円)?\s*(稼|以上|確定|達成)/, '月◯万円の収益訴求'],
   [/楽して|簡単に稼/, '「楽して／簡単に稼ぐ」系の表現'],
 ];
-const AFFILIATE = /(amzn\.to|amazon\.co\.jp\/[^\s]*tag=|a8\.net|px\.a8|rakuten\.co\.jp\/[^\s]*(scid|afid)|moshimo|valuecommerce|accesstrade|afi-b|afb\.|af\.moshimo|アフィリエイト)/i;
+const AFFILIATE = /(amzn\.to|amazon\.co\.jp\/[^\s]*tag=|a8\.net|px\.a8|rakuten\.co\.jp\/[^\s]*(scid|afid)|moshimo|valuecommerce|accesstrade|afi-b|afb\.|af\.moshimo)/i;
 const PR_MARK = /(^|\s|【|\[|#)(PR|広告|プロモーション)(】|\]|\s|$)/;
 const AI_MARK = /(AI生成|AIを活用|AIで作成|AIを使って作成|AI下書き)/;
 
@@ -23,7 +23,7 @@ export const AI_FOOTER = {
 export function charCount(s) { return Array.from(String(s).trim()).length; }
 
 /** @returns {{ body: string, warnings: string[] }} */
-export function checkOutput(kind, body, { minChars, maxChars, prohibited = [] } = {}) {
+export function checkOutput(kind, body, { minChars, maxChars, max_seconds: maxSeconds = null, prohibited = [] } = {}) {
   const warnings = [];
   let text = String(body || '').trim();
   for (const [re, msg] of HYPE) if (re.test(text)) warnings.push(`誇大表現の可能性: ${msg}`);
@@ -40,6 +40,13 @@ export function checkOutput(kind, body, { minChars, maxChars, prohibited = [] } 
   if (kind === 'note_article') {
     if (!/無料部分/.test(text) || !/有料部分/.test(text)) warnings.push('「無料部分」と「有料部分」の区切りが見つかりません');
     if (/【要記入/.test(text)) warnings.push('【要記入】の箇所があります。実体験・数字を人間が書き足してください');
+  }
+  if (maxSeconds && (kind === 'script' || kind === 'video')) {
+    const secs = [...text.matchAll(/(\d+)\s*秒/g)].map((m) => Number(m[1]))
+      .concat([...text.matchAll(/\b(\d{1,2}):(\d{2})\b/g)].map((m) => Number(m[1]) * 60 + Number(m[2])));
+    const max = secs.length ? Math.max(...secs) : null;
+    if (max == null) warnings.push('秒数の表記が見つかりません（尺を確認してください）');
+    else if (max > maxSeconds) warnings.push(`尺が ${maxSeconds}秒を超えている可能性があります（最大 ${max}秒）`);
   }
   for (const p of prohibited) {
     if (p && typeof p === 'string' && p.length >= 2 && text.includes(p)) warnings.push(`禁止事項に関わる語を含みます: ${p}`);

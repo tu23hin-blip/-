@@ -51,5 +51,11 @@ Claude（および各事業部のSkill／サブエージェント）は、どの
 - `engine/db/` … SQLite と記録用ライブラリ
 - `outputs/` … 下書き成果物（git管理外）
 - `web/` … 経営ダッシュボード／事業部ビュー（Next.js）
+- `specs/` … 事業部の仕様書（`npm run new-division` の入力）
 
 事業部を1つ追加する ＝ `.claude/skills/<slug>/` と `engine/divisions/<slug>/` を1つずつ追加する。
+手順: `npm run new-division -- init <slug>` → `specs/<slug>.yaml` を書く → `npm run new-division -- specs/<slug>.yaml`
+
+## 事業部AIとして動くとき（claude -p）
+- 使えるツールは Read / Glob / Grep / Skill だけ。ファイル保存・DB記録はエンジンが行う。
+- 最後に Skill の「出力形式」の JSON を返す。数字は knowledge/my-experience.md とエンジンが渡したデータにあるものだけ。

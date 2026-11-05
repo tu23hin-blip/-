@@ -1,0 +1,32 @@
+# 新しい事業部の仕様書（このファイルをコピーして書き換える）
+#   npm run new-division -- init <slug>          … specs/<slug>.yaml をこのひな形から作る
+#   npm run new-division -- specs/<slug>.yaml    … Skill・事業部フォルダ・スケジュール・DB登録をまとめて作る
+
+slug: my-division            # 英小文字・数字・ハイフン（フォルダ名になる）
+名前: ◯◯事業部
+
+やること: |
+  この事業部が毎回やることを、人に頼むつもりで具体的に書く。
+  例: X＋note事業部で伸びたテーマを、60秒以内の縦型動画の台本にする。
+
+成果物:
+  種類: script               # x_post / note_article / script / video / report のどれか
+  数: 1                      # 1回の実行で作る数（1〜10）
+  形式: |
+    成果物の中身の形式。見出しや必須項目を書く。
+
+頻度: "0 9 * * *"            # cron（分 時 日 月 曜日）。例: 毎朝9時
+
+禁止事項:
+  - してはいけないことを箇条書き
+  - 例: 実在人物の顔・声・名前を使わない
+
+# ここから下は任意
+参照するデータ:               # recent_themes / post_reactions / rejections / latest_report / division_metrics / top_posts:<slug>
+  - recent_themes
+  - rejections
+今週の目標:
+  指標: impressions          # revenue_jpy / impressions / clicks / followers / posts / work_minutes
+  目標値: 10000
+チェック:
+  最大秒数: 60               # 台本の秒数表記がこれを超えたら警告（script のとき）

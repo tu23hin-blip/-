@@ -1,0 +1,22 @@
+# ショート動画事業部（npm run new-division で生成。元の仕様書は spec.yaml）
+slug: short-video
+name: ショート動画事業部
+skill: short-video
+weekly_goal:
+  metric: impressions
+  target: 60000
+checks:
+  max_seconds: 60
+jobs:
+  main:
+    title: 台本1本
+    expect:
+      script: 1
+    context:
+      - top_posts:x-note
+      - recent_themes
+      - rejections
+    instruction: "禁止事項: 実在人物の顔・声・名前・写真を使わない（自分の顔出しの指示もしない。手元・画面録画・図解で構成する） /
+      著作権のある映像・音楽・画像を使わない（商用利用可と確認できる素材だけ） / 60秒を超える台本にしない /
+      「誰でも稼げる」「月◯万」などの収益訴求をしない /
+      実写と誤認されるAI生成映像を使う場合は、各媒体の「AI生成コンテンツ」ラベルを付けるよう投稿メモに書く"

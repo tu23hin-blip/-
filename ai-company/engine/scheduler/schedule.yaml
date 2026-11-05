@@ -14,3 +14,6 @@ jobs:
   - division: analyst
     job: weekly
     cron: "0 8 * * 1"       # 月曜8時: 週次レポート
+  - division: short-video
+    job: main
+    cron: "0 9 * * *"       # ショート動画事業部
