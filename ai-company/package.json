@@ -1,0 +1,30 @@
+{
+  "name": "ai-company",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "setup": "npm install && npm --prefix web install && npm run db:init",
+    "db:init": "node --disable-warning=ExperimentalWarning engine/db/init.js",
+    "db:seed": "node --disable-warning=ExperimentalWarning engine/db/seed.js",
+    "db:reset": "node --disable-warning=ExperimentalWarning engine/db/reset.js",
+    "metrics:import": "node --disable-warning=ExperimentalWarning engine/db/import-csv.js",
+    "division": "node --disable-warning=ExperimentalWarning engine/cli/run.js",
+    "analyst": "node --disable-warning=ExperimentalWarning engine/cli/run.js analyst weekly",
+    "scheduler": "node --disable-warning=ExperimentalWarning engine/scheduler/scheduler.js",
+    "scheduler:once": "node --disable-warning=ExperimentalWarning engine/scheduler/scheduler.js --once",
+    "new-division": "node --disable-warning=ExperimentalWarning engine/cli/new-division.js",
+    "pause-all": "node --disable-warning=ExperimentalWarning engine/cli/status.js pause-all",
+    "resume-all": "node --disable-warning=ExperimentalWarning engine/cli/status.js resume-all",
+    "web": "npm --prefix web run dev",
+    "web:build": "npm --prefix web run build",
+    "web:start": "npm --prefix web run start",
+    "test": "node --disable-warning=ExperimentalWarning --test 'engine/test/*.test.js'"
+  },
+  "dependencies": {
+    "yaml": "2.9.1"
+  }
+}
