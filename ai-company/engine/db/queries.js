@@ -163,7 +163,7 @@ export function inbox(db) {
     .map((o) => ({ ...o, meta: parseJSON(o.meta, {}), content: readOutputFile(o.file_path) }));
   return {
     pending: q("o.approval = 'pending'", 'o.created_at DESC, o.id DESC', 200),
-    approved: q("o.approval = 'approved' AND o.kind != 'report'", 'o.created_at DESC, o.id DESC', 30),
+    approved: q("o.approval = 'approved' AND o.kind != 'report'", 'o.created_at DESC, o.id DESC', 50),
   };
 }
 

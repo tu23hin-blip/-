@@ -3,10 +3,11 @@
 // 画面(web)からの承認操作もここを通す（outputs と events を必ず一緒に更新するため）。
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { config, localDate } from '../config.js';
 
-const SCHEMA = fs.readFileSync(new URL('./schema.sql', import.meta.url), 'utf8');
+const SCHEMA = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'schema.sql'), 'utf8');
 
 export const METRIC_NAMES = ['revenue_jpy', 'impressions', 'clicks', 'followers', 'posts', 'work_minutes', 'api_cost_jpy'];
 export const OUTPUT_KINDS = ['x_post', 'note_article', 'script', 'video', 'report'];

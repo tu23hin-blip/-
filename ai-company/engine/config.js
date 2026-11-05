@@ -3,7 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+export const ROOT = process.env.AI_COMPANY_ROOT
+  ? path.resolve(process.env.AI_COMPANY_ROOT)
+  : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const envFile = path.join(ROOT, '.env');
 if (fs.existsSync(envFile)) {
