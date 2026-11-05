@@ -1,0 +1,16 @@
+# X＋note事業部
+slug: x-note
+name: X＋note事業部
+skill: x-note
+# 今週の目標（metric は revenue_jpy/impressions/clicks/followers/posts/work_minutes/api_cost_jpy）
+weekly_goal: { metric: impressions, target: 25000 }
+
+jobs:
+  daily:
+    title: X投稿案3本
+    expect: { x_post: 3 }
+    context: [recent_themes, post_reactions, rejections, latest_report]
+  weekly-note:
+    title: note記事の下書き（週次）
+    expect: { note_article: 1 }
+    context: [recent_themes, post_reactions, rejections, latest_report]

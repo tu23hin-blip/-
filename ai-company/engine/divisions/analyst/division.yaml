@@ -1,0 +1,8 @@
+# 分析担当（サブエージェント .claude/agents/analyst.md を claude -p --agent analyst で呼ぶ）
+# 実行の中身は run.js（数字の集計はエンジンが行い、AIは解釈と方針案だけを書く）
+slug: analyst
+name: 分析担当
+skill: analyst
+jobs:
+  weekly:
+    title: 週次レポート

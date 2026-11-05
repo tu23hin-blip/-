@@ -18,8 +18,9 @@ const resolveFromRoot = (p) => (path.isAbsolute(p) ? p : path.join(ROOT, p));
 export const config = {
   root: ROOT,
   dbPath: process.env.DB_PATH ? resolveFromRoot(process.env.DB_PATH) : path.join(ROOT, 'engine/db/ai-company.db'),
-  outputsDir: path.join(ROOT, 'outputs'),
-  knowledgeDir: path.join(ROOT, 'knowledge'),
+  outputsDir: process.env.OUTPUTS_DIR ? resolveFromRoot(process.env.OUTPUTS_DIR) : path.join(ROOT, 'outputs'),
+  lockDir: process.env.LOCK_DIR ? resolveFromRoot(process.env.LOCK_DIR) : path.join(ROOT, 'engine/scheduler/locks'),
+  knowledgeDir: process.env.KNOWLEDGE_DIR ? resolveFromRoot(process.env.KNOWLEDGE_DIR) : path.join(ROOT, 'knowledge'),
   divisionsDir: path.join(ROOT, 'engine/divisions'),
   skillsDir: path.join(ROOT, '.claude/skills'),
   claudeBin: process.env.CLAUDE_BIN || 'claude',

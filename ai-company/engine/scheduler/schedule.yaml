@@ -1,0 +1,16 @@
+# 定時実行の設定（時刻は TZ = .env の TZ、既定 Asia/Tokyo）
+# cron 形式: "分 時 日 月 曜日"（曜日 0=日, 1=月 … 6=土）
+# 違う事業部は並列で動きます。同じ事業部は二重起動しません（実行中ならスキップ）。
+retry: 1                # 失敗時のリトライ回数（最大1）
+retry_delay_seconds: 60
+
+jobs:
+  - division: x-note
+    job: daily
+    cron: "0 7 * * *"       # 毎朝7時: X投稿案3本
+  - division: x-note
+    job: weekly-note
+    cron: "30 7 * * 6"      # 土曜7:30: note記事の下書き
+  - division: analyst
+    job: weekly
+    cron: "0 8 * * 1"       # 月曜8時: 週次レポート

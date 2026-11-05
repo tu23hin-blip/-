@@ -82,12 +82,14 @@ export function dashboard(db, { days = 30, today = localDate() } = {}) {
 
   const divisions = db.prepare('SELECT * FROM divisions ORDER BY id').all();
   const weekStart = mondayOf(today);
+  // 目標も売上・インプの記録もない事業部（分析担当など）は比較から外す
   const byDivision = divisions.map((d) => ({
-    slug: d.slug, name: d.name,
+    slug: d.slug, name: d.name, has_goal: !!d.weekly_goal,
     revenue: sumMetric(db, 'revenue_jpy', from, today, d.id),
     impressions: sumMetric(db, 'impressions', from, today, d.id),
-  }));
-  const goals = divisions.map((d) => {
+  })).filter((d) => d.has_goal || d.revenue != null || d.impressions != null);
+  const shown = new Set(byDivision.map((d) => d.slug));
+  const goals = divisions.filter((d) => shown.has(d.slug)).map((d) => {
     const goal = parseGoal(d.weekly_goal);
     const actual = goal ? sumMetric(db, goal.metric, weekStart, today, d.id) : null;
     return {
@@ -171,7 +173,7 @@ export function inbox(db) {
 export function readOutputFile(filePath) {
   if (!filePath) return null;
   const abs = path.resolve(config.root, filePath);
-  const allowed = [config.outputsDir, config.knowledgeDir].some((dir) => abs.startsWith(dir + path.sep));
+  const allowed = [config.outputsDir, config.knowledgeDir].some((dir) => abs.startsWith(path.resolve(dir) + path.sep));
   if (!allowed || !fs.existsSync(abs)) return null;
   return fs.readFileSync(abs, 'utf8');
 }

@@ -7,6 +7,13 @@
 outputs/*
 !outputs/.gitkeep
 
+# 週次レポート（売上などの数字を含むためgit管理しない）
+knowledge/reports/*
+!knowledge/reports/.gitkeep
+
+# 実行中ロック
+engine/scheduler/locks/
+
 # SQLite データベース本体
 engine/db/*.db
 engine/db/*.db-journal
@@ -29,3 +36,4 @@ __pycache__/
 .DS_Store
 .vscode/
 .idea/
+engine/scheduler/scheduler.log
