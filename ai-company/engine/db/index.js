@@ -193,9 +193,40 @@ export function createRecorder(db) {
     if (date > localDate()) throw new Error('未来の日付には入力できません');
   }
 
-  /** 投稿ごとの数字（入力日時点の累計）を記録。空欄の項目は変更しない */
-  function record_output_metrics(output_id, { impressions, clicks, date = localDate() } = {}) {
-    checkInputDate(date);
+  /** 投稿日（YYYY-MM-DD）: meta.published_at → 既存の投稿ごとの行の日付 → 成果物の作成日 */
+  function postDateOf(o) {
+    const meta = parseMeta(o.meta);
+    if (meta.published_at) return localDate(new Date(meta.published_at));
+    const row = db.prepare('SELECT date FROM metrics WHERE output_id = ? ORDER BY date LIMIT 1').get(o.id);
+    return row?.date || localDate(new Date(o.created_at));
+  }
+
+  /**
+   * 投稿ごとの数字を「投稿ごとに1行（最新の累計値）」で上書きする。日付ごとに行を増やさない。
+   * metrics.date は投稿日で固定（date を渡したときだけその日付にそろえる）。
+   * 古い形式で同じ投稿に複数行あった場合は1行にまとめる（合計で二重に数えないため）。
+   */
+  function upsert_post_metric({ output_id, name, value, date = null }) {
+    if (!METRIC_NAMES.includes(name)) throw new Error(`不明な指標: ${name}`);
+    const o = db.prepare('SELECT * FROM outputs WHERE id = ?').get(output_id);
+    if (!o) throw new Error(`成果物が見つかりません: ${output_id}`);
+    const v = value === null || value === undefined || value === '' ? null : Number(value);
+    if (v !== null && !Number.isFinite(v)) throw new Error(`数値ではありません: ${value}`);
+    const rows = db.prepare('SELECT id, date FROM metrics WHERE output_id = ? AND name = ? ORDER BY date, id').all(output_id, name);
+    const postDate = date || rows[0]?.date || postDateOf(o);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(postDate)) throw new Error(`日付の形式が不正: ${postDate}`);
+    if (rows.length) {
+      const keep = rows[0];
+      for (const r of rows.slice(1)) db.prepare('DELETE FROM metrics WHERE id = ?').run(r.id);
+      db.prepare('UPDATE metrics SET value = ?, date = ?, division_id = ? WHERE id = ?').run(v, postDate, o.division_id, keep.id);
+    } else {
+      db.prepare('INSERT INTO metrics (date, division_id, name, value, output_id) VALUES (?,?,?,?,?)').run(postDate, o.division_id, name, v, output_id);
+    }
+    return postDate;
+  }
+
+  /** 投稿ごとの数字（その時点の累計）を手入力。投稿ごとに1行で上書き。空欄の項目は変更しない */
+  function record_output_metrics(output_id, { impressions, clicks } = {}) {
     const values = { impressions: parseInput(impressions, 'インプレッション', { integer: true }), clicks: parseInput(clicks, 'クリック', { integer: true }) };
     const given = Object.entries(values).filter(([, v]) => v !== undefined);
     if (given.length === 0) throw new Error('インプレッションかクリックのどちらかを入力してください');
@@ -203,9 +234,10 @@ export function createRecorder(db) {
       const o = db.prepare('SELECT * FROM outputs WHERE id = ?').get(output_id);
       if (!o) throw new Error(`成果物が見つかりません: ${output_id}`);
       if (o.approval !== 'approved') throw new Error('承認済みの成果物だけ数字を入力できます');
-      for (const [name, value] of given) record_metric({ date, division: o.division_id, name, value, output_id });
+      let postDate = null;
+      for (const [name, value] of given) postDate = upsert_post_metric({ output_id, name, value });
       log_event({ division: o.division_id, task_id: o.task_id, type: 'progress',
-        message: `投稿の数字を入力（${date}時点）: ${o.title || o.kind} — ${given.map(([n, v]) => `${n === 'impressions' ? 'インプ' : 'クリック'} ${v.toLocaleString('ja-JP')}`).join(' / ')}` });
+        message: `投稿の数字を手入力（${localDate()}時点の累計・投稿日 ${postDate}）: ${o.title || o.kind} — ${given.map(([n, v]) => `${n === 'impressions' ? 'インプ' : 'クリック'} ${v.toLocaleString('ja-JP')}`).join(' / ')}` });
       return Object.fromEntries(given);
     });
   }
@@ -282,17 +314,23 @@ export function createRecorder(db) {
   }
 
   /** 人間が手動投稿した後に URL を登録。投稿数を1増やす */
-  function set_published(output_id, url) {
-    return tx(db, () => {
-      const o = db.prepare('SELECT * FROM outputs WHERE id = ?').get(output_id);
-      if (!o) throw new Error(`成果物が見つかりません: ${output_id}`);
-      if (o.approval !== 'approved') throw new Error('承認済みの成果物だけ投稿済みにできます');
-      const first = !o.published_url;
-      db.prepare('UPDATE outputs SET published_url = ? WHERE id = ?').run(url, output_id);
-      if (first) add_metric({ division: o.division_id, name: 'posts', value: 1 });
-      log_event({ division: o.division_id, task_id: o.task_id, type: 'approval', message: `手動投稿済み: ${url}` });
-    });
+  /** 投稿済みにする（URL 登録・投稿数+1・投稿日の記録）。publishedAt は投稿日時（ISO）。既定は今 */
+  function link_published(output_id, url, { publishedAt = null, message = null } = {}) {
+    const o = db.prepare('SELECT * FROM outputs WHERE id = ?').get(output_id);
+    if (!o) throw new Error(`成果物が見つかりません: ${output_id}`);
+    if (o.approval !== 'approved') throw new Error('承認済みの成果物だけ投稿済みにできます');
+    const first = !o.published_url;
+    const meta = parseMeta(o.meta);
+    if (first || publishedAt) meta.published_at = publishedAt || new Date().toISOString();
+    db.prepare('UPDATE outputs SET published_url = ?, meta = ? WHERE id = ?').run(url, JSON.stringify(meta), output_id);
+    if (first) add_metric({ date: localDate(new Date(meta.published_at)), division: o.division_id, name: 'posts', value: 1 });
+    log_event({ division: o.division_id, task_id: o.task_id, type: 'approval', message: message || `手動投稿済み: ${url}` });
   }
+
+  function set_published(output_id, url) {
+    return tx(db, () => link_published(output_id, url));
+  }
+
 
   function set_division_status(division, status, reason = null) {
     if (!['active', 'paused'].includes(status)) throw new Error(`不正な状態: ${status}`);
@@ -313,7 +351,7 @@ export function createRecorder(db) {
   return {
     db, resolveDivision, ensure_division,
     start_task, queue_task, log_event, save_output, finish_task, fail_task,
-    record_metric, add_metric, record_output_metrics, record_sales, get_sales, set_approval, request_revision, set_published, set_division_status,
+    record_metric, add_metric, upsert_post_metric, link_published, record_output_metrics, record_sales, get_sales, set_approval, request_revision, set_published, set_division_status,
     set_meta, get_meta,
   };
 }

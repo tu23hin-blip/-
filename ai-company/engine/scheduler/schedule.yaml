@@ -5,6 +5,9 @@ retry: 1                # 失敗時のリトライ回数（最大1）
 retry_delay_seconds: 60
 
 jobs:
+  - division: metrics
+    job: x
+    cron: "0 6 * * *"       # 毎朝6時: X の投稿の数字を取り込み（7時の生成より前）。失敗しても他のジョブは動く
   - division: x-note
     job: daily
     cron: "0 7 * * *"       # 毎朝7時: X投稿案3本

@@ -11,6 +11,9 @@ export const METRIC_LABELS = {
   revenue_jpy: '売上', sales_count: '販売件数', impressions: 'インプレッション', clicks: 'クリック', followers: 'フォロワー',
   posts: '投稿数', work_minutes: '作業時間（分）', api_cost_jpy: 'APIコスト',
 };
+// 売上を持たない社内の部門（分析担当・数字の取り込み）
+export const INTERNAL_DIVISIONS = ['analyst', 'metrics'];
+
 // 合計ではなく最新値で見る指標
 const SNAPSHOT_METRICS = new Set(['followers']);
 
@@ -132,8 +135,8 @@ export function dashboard(db, { days = 30, today = localDate() } = {}) {
     month: { start: monthStart, revenue: revenueThisMonth, prev_revenue: revenuePrevMonth, prev_range: [prevMonthStart, prevSameDay], mom },
     period, daily, by_division: byDivision, goals,
     latest_report: latestReport(db),
-    // 売上入力フォームの選択肢（分析担当は売上を持たないので除く）
-    input_divisions: divisions.filter((d) => d.slug !== 'analyst').map((d) => ({ slug: d.slug, name: d.name })),
+    // 売上入力フォームの選択肢（分析担当・数字の取り込みは売上を持たないので除く）
+    input_divisions: divisions.filter((d) => !INTERNAL_DIVISIONS.includes(d.slug)).map((d) => ({ slug: d.slug, name: d.name })),
     seeded: db.prepare("SELECT value FROM app_meta WHERE key = 'seeded'").get()?.value === '1',
   };
 }

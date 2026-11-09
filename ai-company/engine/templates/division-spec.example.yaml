@@ -22,6 +22,7 @@ slug: my-division            # 英小文字・数字・ハイフン（フォル�
   - 例: 実在人物の顔・声・名前を使わない
 
 # ここから下は任意
+# アカウント: sub            # 別アカウント用: 口調・実体験・テーマを knowledge/accounts/sub/ から読む（省略すると knowledge/ 直下）
 参照するデータ:               # recent_themes / post_reactions / rejections / latest_report / division_metrics / top_posts:<slug>
   - recent_themes
   - rejections

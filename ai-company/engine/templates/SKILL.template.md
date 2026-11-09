@@ -11,8 +11,8 @@ description: {{name}}の作業手順。{{summary}} 投稿・公開は絶対に�
 ## 最初に必ず読むもの
 1. `CLAUDE.md`（全体ルール）
 2. `knowledge/compliance.md`（規約・表記ルール）
-3. `knowledge/my-voice.md`（口調）と `knowledge/my-experience.md`（使ってよい実体験・数字）
-4. `knowledge/themes.md`（テーマ）と、あれば `knowledge/reports/` の最新の週次レポート
+3. `{{voice_path}}`（口調）と `{{experience_path}}`（使ってよい実体験・数字）
+4. `{{themes_path}}`（テーマ）と、あれば `knowledge/reports/` の最新のレポート
 
 プロンプトの「エンジンからの情報」に、今日の日付・ジョブ・参照データが入っています。
 
@@ -28,7 +28,7 @@ description: {{name}}の作業手順。{{summary}} 投稿・公開は絶対に�
 
 {{hypothesis_rule}}## 禁止事項
 {{prohibited}}
-- 数字や実績を捏造しない（`my-experience.md` にあるもの以外は「例:」と明示する）
+- 数字や実績を捏造しない（`{{experience_path}}` にあるもの以外は「例:」と明示する）
 - 誇大表現（「誰でも」「必ず」「放置で」「月◯万」など）を使わない
 - AI生成であることを明記する（`compliance.md` の表記）
 

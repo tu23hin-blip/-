@@ -32,7 +32,7 @@ function approvedPost(title, hypothesis) {
 }
 
 // ---------- 1. 投稿ごとの数字 ----------
-test('投稿ごとの数字: 承認済みだけ、今日の日付で output_id 付きに upsert、空欄は変更しない', () => {
+test('投稿ごとの数字（手入力）: 承認済みだけ、投稿ごとに1行（日付は投稿日）で上書き、空欄は変更しない', () => {
   const t = rec.start_task({ division: 'x-note', title: 'x' });
   const pending = rec.save_output({ task_id: t, kind: 'x_post', title: 'p' });
   assert.throws(() => rec.record_output_metrics(pending, { impressions: 10 }), /承認済み/);
@@ -45,28 +45,32 @@ test('投稿ごとの数字: 承認済みだけ、今日の日付で output_id �
   assert.throws(() => rec.record_output_metrics(id, {}), /どちらか/);
   assert.throws(() => rec.record_output_metrics(id, { impressions: -1 }), /0以上/);
   assert.throws(() => rec.record_output_metrics(id, { clicks: 1.5 }), /整数/);
-  assert.ok(db.prepare("SELECT COUNT(*) c FROM events WHERE message LIKE '投稿の数字を入力%'").get().c >= 2);
+  assert.ok(db.prepare("SELECT COUNT(*) c FROM events WHERE message LIKE '投稿の数字を手入力%'").get().c >= 2);
   // 事業部全体の数字（ダッシュボード）には混ざらない
   assert.equal(dashboard(db, { days: 7 }).period.impressions, null);
 });
 
-test('投稿ごとの数字は累計: 合計せず最新の日付の値を使う（受け箱・コンテキスト）', () => {
+test('投稿ごとの数字は1行だけ: 何度入れても行は増えず、SUM しても二重に数えない（受け箱・コンテキスト）', () => {
   const id = approvedPost('投稿B', '【新仮説】1行目を問いかけにする');
+  // 古い形式で日付違いの行が2つある投稿 → 1行にまとめて上書き
   rec.record_metric({ date: addDays(today, -2), division: 'x-note', name: 'impressions', value: 400, output_id: id });
+  rec.record_metric({ date: addDays(today, -1), division: 'x-note', name: 'impressions', value: 600, output_id: id });
   rec.record_output_metrics(id, { impressions: 900 });
+  rec.record_output_metrics(id, { impressions: 950 });
+  const rows = db.prepare("SELECT date, value FROM metrics WHERE output_id = ? AND name = 'impressions'").all(id);
+  assert.deepEqual(rows.map((r) => [r.date, r.value]), [[addDays(today, -2), 950]], '投稿日（最初の行の日付）で固定');
   const card = inbox(db).approved.find((o) => o.id === id);
-  assert.equal(card.post_impressions, 900);
-  assert.equal(card.post_metrics_date, today);
+  assert.equal(card.post_impressions, 950);
   const ctx = buildContext(db, rec.resolveDivision('x-note'), ['post_reactions']);
-  assert.match(ctx, /仮説: 【新仮説】1行目を問いかけにする \/ インプ: 900/);
+  assert.match(ctx, /仮説: 【新仮説】1行目を問いかけにする \/ インプ: 950/);
   assert.match(ctx, /仮説: 【伸びた型】数字始まり \/ インプ: 1500/);
-  assert.ok(ctx.indexOf('インプ: 1500') < ctx.indexOf('インプ: 900'), 'インプレッション順');
+  assert.ok(ctx.indexOf('インプ: 1500') < ctx.indexOf('インプ: 950'), 'インプレッション順');
 });
 
 // ---------- 2. 仮説の記録 ----------
 test('仮説: Skill に記載があり、runner が meta.hypothesis に保存する（ない X投稿は警告）', async () => {
   const skill = fs.readFileSync(path.join(config.root, '.claude/skills/x-note/SKILL.md'), 'utf8');
-  assert.match(skill, /3本のうち2本は直近で伸びた型、1本は新しい仮説。各投稿の meta.hypothesis に1行で書く/);
+  assert.match(skill, /3本のうち2本は直近で伸びた型、1本は新しい仮説を試す。各投稿の meta.hypothesis に何を試したかを1行で書く/);
   assert.match(skill, /"hypothesis"/);
 
   const r = await runJob('x-note', 'daily', { rec });
@@ -168,7 +172,7 @@ test('analyst の集計に sales_count と平均単価が入る', () => {
 
 test('new-division: X投稿の事業部（例: sub-x）には仮説のルールが入る', async () => {
   const { hypothesisRule } = await import('../cli/new-division.js');
-  assert.match(hypothesisRule({ kind: 'x_post', count: 3 }), /3本のうち2本は直近で伸びた型、1本は新しい仮説。各投稿の meta.hypothesis に1行で書く/);
+  assert.match(hypothesisRule({ kind: 'x_post', count: 3 }), /3本のうち2本は直近で伸びた型、1本は新しい仮説を試す。各投稿の meta.hypothesis に何を試したかを1行で書く/);
   assert.equal(hypothesisRule({ kind: 'script', count: 1 }), '');
   assert.ok(YAML.parse(fs.readFileSync(path.join(config.root, 'engine/divisions/analyst/division.yaml'), 'utf8')).jobs.midweek);
 });

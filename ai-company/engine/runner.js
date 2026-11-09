@@ -139,7 +139,7 @@ async function processRevisions({ rec, cfg, div }) {
  * 事業部のジョブを1回実行する。
  * @returns {Promise<{status:'done'|'failed'|'skipped', reason?:string, taskId?:number}>}
  */
-export async function runJob(slug, jobId, { force = false, rec = createRecorder(getDb()) } = {}) {
+export async function runJob(slug, jobId, { force = false, rec = createRecorder(getDb()), options = {} } = {}) {
   const cfg = loadDivisionConfig(slug);
   const div = divisionRow(rec, cfg);
 
@@ -165,7 +165,7 @@ export async function runJob(slug, jobId, { force = false, rec = createRecorder(
     const custom = path.join(cfg.dir, 'run.js');
     if (fs.existsSync(custom)) {
       const mod = await import(pathToFileURL(custom).href);
-      return await mod.run({ cfg, jobId, rec, div, helpers: { buildPrompt, recordCost, runClaude, extractJson } });
+      return await mod.run({ cfg, jobId, rec, div, options: { force, ...options }, helpers: { buildPrompt, recordCost, runClaude, extractJson } });
     }
 
     const revFailed = await processRevisions({ rec, cfg, div });

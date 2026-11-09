@@ -8,7 +8,8 @@ export const ROOT = process.env.AI_COMPANY_ROOT
   : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const envFile = path.join(ROOT, '.env');
-if (fs.existsSync(envFile)) {
+// テストでは .env（本物のAPIキー）を読まない
+if (fs.existsSync(envFile) && !process.env.AI_COMPANY_SKIP_DOTENV) {
   try { process.loadEnvFile(envFile); } catch { /* 古い Node では無視 */ }
 }
 if (!process.env.TZ) process.env.TZ = 'Asia/Tokyo';

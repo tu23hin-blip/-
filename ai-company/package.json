@@ -13,6 +13,7 @@
     "db:seed": "node --disable-warning=ExperimentalWarning engine/db/seed.js",
     "db:reset": "node --disable-warning=ExperimentalWarning engine/db/reset.js",
     "metrics:import": "node --disable-warning=ExperimentalWarning engine/db/import-csv.js",
+    "metrics:x": "node --disable-warning=ExperimentalWarning engine/cli/run.js metrics x",
     "division": "node --disable-warning=ExperimentalWarning engine/cli/run.js",
     "analyst": "node --disable-warning=ExperimentalWarning engine/cli/run.js analyst weekly",
     "analyst:midweek": "node --disable-warning=ExperimentalWarning engine/cli/run.js analyst midweek",

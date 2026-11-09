@@ -5,6 +5,7 @@
 //   npm run scheduler -- --list               … 次回の実行予定を表示
 // ・違う事業部は並列、同じ事業部は二重起動しない（ここで防ぎ、さらに runner のロックでも防ぐ）
 // ・失敗（終了コード2）は retry 回まで再実行（最大1）。最後まで失敗したら events に fail を記録
+// ・終了コード4（クレジット切れ・キーの間違いなど直らない失敗）はリトライしない
 // ・Mac のスリープ等で時刻を過ぎたジョブは、復帰時にまとめて1回ずつ実行する
 import fs from 'node:fs';
 import path from 'node:path';
@@ -44,6 +45,10 @@ export function createScheduler({ schedule, rec, spawnJob = defaultSpawn }) {
     running.delete(job.division);
     if (code === 0) log(`✓ ${job.key} 完了`);
     else if (code === 3) log(`- ${job.key} スキップ（一時停止中・コスト上限・実行中のいずれか）`);
+    else if (code === 4) {
+      log(`✕ ${job.key} 失敗（リトライしても直らないエラー。リトライしません）`);
+      if (!stopping) rec.log_event({ division: job.division, type: 'fail', message: `${job.key} が失敗しました（クレジット切れ・キーの間違いなど）。事業部ビューのエラーを確認してください。ほかのジョブはそのまま動きます` });
+    }
     else if (attempt < schedule.retry && !stopping) {
       log(`✕ ${job.key} 失敗（code ${code}）→ ${Math.round(schedule.retryDelayMs / 1000)}秒後にリトライ`);
       rec.log_event({ division: job.division, type: 'progress', message: `${job.key} が失敗したため ${Math.round(schedule.retryDelayMs / 1000)}秒後にリトライします（${attempt + 1}/${schedule.retry}）` });

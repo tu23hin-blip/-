@@ -3,7 +3,8 @@
 // 列: date,division,name,value[,url]
 //   division … slug（x-note）または事業部名
 //   value    … 空欄なら「不明(null)」として記録
-//   url      … 任意。投稿URL（outputs.published_url）を書くと投稿ごとの数字として記録
+//   url      … 任意。投稿URL（outputs.published_url）を書くと投稿ごとの数字（その時点の累計）として、
+//              投稿ごとに1行で上書きする（date 列ではなく投稿日で記録）
 // 1行でもエラーがあれば何も取り込まない（中途半端な状態を作らない）。
 import fs from 'node:fs';
 import path from 'node:path';
@@ -69,7 +70,11 @@ export function importMetricsCsv(db, text) {
   if (errors.length) return { imported: 0, errors };
   db.exec('BEGIN IMMEDIATE');
   try {
-    for (const it of items) rec.record_metric(it);
+    for (const it of items) {
+      // url 付き（投稿ごと）は投稿ごとに1行で上書き（日付は投稿日のまま）。それ以外は日別
+      if (it.output_id) rec.upsert_post_metric({ output_id: it.output_id, name: it.name, value: it.value });
+      else rec.record_metric(it);
+    }
     rec.log_event({ type: 'progress', message: `CSVから数字を取り込み: ${items.length}行` });
     db.exec('COMMIT');
   } catch (e) { db.exec('ROLLBACK'); throw e; }

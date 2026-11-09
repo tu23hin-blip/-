@@ -75,7 +75,7 @@ export function periodsFor(mode, today) {
 export function collectWeeklyData(db, today = localDate(), mode = 'weekly') {
   if (!MODES[mode]) throw new Error(`不明なモード: ${mode}`);
   const { last: [lastMon, lastSun], prev: [prevMon, prevSun] } = periodsFor(mode, today);
-  const divisions = db.prepare("SELECT * FROM divisions WHERE slug != 'analyst' ORDER BY id").all();
+  const divisions = db.prepare("SELECT * FROM divisions WHERE slug NOT IN ('analyst','metrics') ORDER BY id").all();
   return {
     mode, labels: { last: MODES[mode].lastLabel, prev: MODES[mode].prevLabel },
     period: { last_week: [lastMon, lastSun], prev_week: [prevMon, prevSun], today },

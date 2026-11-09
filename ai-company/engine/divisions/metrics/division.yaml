@@ -1,0 +1,8 @@
+# 数字の取り込み担当（AIは使わない）。毎朝 6:00 に X の投稿の数字を取り込む（schedule.yaml の metrics:x）。
+# 手動: npm run metrics:x（同じ日の2回目は何もしない。やり直すなら npm run metrics:x -- --force）
+slug: metrics
+name: 数字の取り込み
+skill: null
+jobs:
+  x:
+    title: X の投稿の数字を取り込み

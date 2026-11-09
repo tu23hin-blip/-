@@ -28,7 +28,7 @@ export default function OutputCard({ output, mode = 'view', onChange, showDivisi
       setComment('');
       if (action === 'metrics') { setImp(''); setClk(''); }
       setMsg(action === 'revise' ? '修正タスクを積みました。次の実行で修正版が承認待ちに出ます。'
-        : action === 'metrics' ? '今日の時点の数字として保存しました。' : '更新しました');
+        : action === 'metrics' ? '保存しました（投稿ごとに1行で上書き）。' : '更新しました');
       onChange?.();
     } catch (e) { setMsg(e.message); } finally { setBusy(false); }
   };
@@ -100,10 +100,10 @@ export default function OutputCard({ output, mode = 'view', onChange, showDivisi
           {output.published_url && (
             <form className="post-metrics" onSubmit={(e) => { e.preventDefault(); act('metrics', { impressions: imp, clicks: clk }); }}>
               <div className="sub">
-                投稿の数字（今日の時点の累計）
+                投稿の数字（入力する時点の累計。投稿ごとに1行で上書き。X は毎朝6時に自動で更新）
                 {isNum(output.post_impressions) || isNum(output.post_clicks)
-                  ? ` ・ 前回 ${output.post_metrics_date}: インプ ${fmtNum(output.post_impressions)} / クリック ${fmtNum(output.post_clicks)}`
-                  : ' ・ まだ入力されていません'}
+                  ? ` ・ いまの値: インプ ${fmtNum(output.post_impressions)} / クリック ${fmtNum(output.post_clicks)}`
+                  : ' ・ まだありません'}
               </div>
               <div className="actions" style={{ marginTop: 4 }}>
                 <label className="field">インプレッション

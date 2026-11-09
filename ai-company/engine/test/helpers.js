@@ -16,8 +16,14 @@ export function setupEnv(extra = {}) {
     USD_JPY_RATE: '150',
     DAILY_API_COST_LIMIT_JPY: '',
     TZ: 'Asia/Tokyo',
+    AI_COMPANY_SKIP_DOTENV: '1',
+    X_FETCH_DAYS: '',
     ...extra,
   });
+  // 本物の X API キーが環境にあってもテストでは使わない
+  for (const k of Object.keys(process.env)) if (/^X_(MAIN|SUB)_/.test(k) && !(k in extra)) process.env[k] = '';
+  // 安全装置: テストから本物のネットワーク（X API など）を呼ばせない
+  globalThis.fetch = async (url) => { throw new Error(`テストで本物のネットワークを呼ぼうとしました: ${url}`); };
   return dir;
 }
 

@@ -3,7 +3,7 @@
 //   npm run division -- x-note weekly-note
 //   npm run division -- x-note revise     （修正依頼だけ処理）
 //   npm run division -- x-note daily --force （一時停止中でも実行）
-// 終了コード: 0=成功, 2=失敗, 3=スキップ（実行中・一時停止・コスト上限）
+// 終了コード: 0=成功, 2=失敗, 3=スキップ（実行中・一時停止・コスト上限）, 4=失敗（リトライしても直らない: クレジット切れ・キーの間違いなど）
 import { runJob } from '../runner.js';
 import { activeChildren } from '../claude.js';
 import { loadDivisionConfig, listDivisionConfigs } from '../registry.js';
@@ -33,4 +33,4 @@ const sec = Math.round((Date.now() - t0) / 1000);
 if (r.status === 'done') { console.log(`✓ 完了（${sec}秒）${r.taskId ? ` タスク #${r.taskId}` : ''}${r.taskStatus === 'awaiting_approval' ? ' → 承認待ちに出しました' : ''}`); process.exit(0); }
 if (r.status === 'skipped') { console.log(`- スキップ: ${r.reason}`); process.exit(3); }
 console.error(`✕ 失敗（${sec}秒）: ${r.reason || ''}`);
-process.exit(2);
+process.exit(r.retryable === false ? 4 : 2);

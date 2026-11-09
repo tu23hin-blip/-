@@ -1,0 +1,7 @@
+# X のアカウントと部門の対応。アカウントごとに別の開発者アプリのキーを .env に置く。
+#   env_prefix: X_MAIN なら X_MAIN_API_KEY / X_MAIN_API_SECRET / X_MAIN_ACCESS_TOKEN / X_MAIN_ACCESS_TOKEN_SECRET を使う
+#   divisions:  このアカウントの投稿をひも付ける部門（engine/divisions/<slug>）
+# キーが空のアカウント、部門が未登録のアカウントは何もせずスキップする（APIは呼ばない）。
+accounts:
+  - { env_prefix: X_MAIN, divisions: [x-note] }
+  - { env_prefix: X_SUB,  divisions: [sub-x] }
