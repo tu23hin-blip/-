@@ -11,8 +11,8 @@ export const METRIC_LABELS = {
   revenue_jpy: '売上', sales_count: '販売件数', impressions: 'インプレッション', clicks: 'クリック', followers: 'フォロワー',
   posts: '投稿数', work_minutes: '作業時間（分）', api_cost_jpy: 'APIコスト',
 };
-// 売上を持たない社内の部門（分析担当・数字の取り込み）
-export const INTERNAL_DIVISIONS = ['analyst', 'metrics'];
+// 売上を持たない社内の部門（分析担当・数字の取り込み・材料づくり）
+export const INTERNAL_DIVISIONS = ['analyst', 'metrics', 'materials'];
 
 // 合計ではなく最新値で見る指標
 const SNAPSHOT_METRICS = new Set(['followers']);

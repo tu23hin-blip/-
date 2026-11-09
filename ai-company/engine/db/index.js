@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { config, localDate } from '../config.js';
 import { pendingMigrations } from './migrate.js';
+import { applyKnowledgeUpdate, KNOWLEDGE_UPDATE_TYPES } from '../knowledge.js';
 
 const SCHEMA = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'schema.sql'), 'utf8');
 
@@ -290,6 +291,12 @@ export function createRecorder(db) {
         db.prepare('UPDATE divisions SET weekly_goal = ? WHERE id = ?').run(JSON.stringify(meta.new_goal), target.id);
         log_event({ division: target.id, type: 'approval', message: `今週の目標を更新: ${JSON.stringify(meta.new_goal)}` });
       }
+      // knowledge の更新案（口調・実績・テーマ）は承認したときだけファイルに反映する
+      if (approval === 'approved' && KNOWLEDGE_UPDATE_TYPES.includes(meta.type)) {
+        const content = o.file_path && fs.existsSync(path.resolve(config.root, o.file_path)) ? fs.readFileSync(path.resolve(config.root, o.file_path), 'utf8') : null;
+        const msg = applyKnowledgeUpdate(meta, content);
+        log_event({ division: o.division_id, task_id: o.task_id, type: 'approval', message: msg });
+      }
       refreshTaskStatus(o.task_id);
     });
   }
@@ -301,6 +308,9 @@ export function createRecorder(db) {
       const o = db.prepare('SELECT * FROM outputs WHERE id = ?').get(output_id);
       if (!o) throw new Error(`成果物が見つかりません: ${output_id}`);
       const meta = parseMeta(o.meta);
+      if (meta.type === 'goal_update' || KNOWLEDGE_UPDATE_TYPES.includes(meta.type)) {
+        throw new Error('この項目は「承認」か「却下」だけです（修正したいときは却下して、ファイルを直接直してください）');
+      }
       (meta.comments ||= []).push({ at: now(), text: comment, action: 'revision' });
       meta.revision_requested = true;
       db.prepare("UPDATE outputs SET approval = 'rejected', meta = ? WHERE id = ?").run(JSON.stringify(meta), output_id);

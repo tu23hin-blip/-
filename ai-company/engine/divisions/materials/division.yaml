@@ -1,0 +1,11 @@
+# 材料づくり（X を見て knowledge の材料を作る。結果はすべて承認待ちに出し、承認したときだけ knowledge に反映する）
+#   voice    … 口調の自動作成＋実績の候補抽出（初回だけ）  npm run voice:build -- <部門>
+#   research … テーマのリサーチ（月・木 6:30）            npm run research:x -- <部門>
+slug: materials
+name: 材料づくり
+skill: null
+jobs:
+  voice:
+    title: 口調の自動作成と実績の候補抽出
+  research:
+    title: テーマのリサーチ（X）

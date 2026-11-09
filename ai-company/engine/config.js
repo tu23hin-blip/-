@@ -14,6 +14,13 @@ if (fs.existsSync(envFile) && !process.env.AI_COMPANY_SKIP_DOTENV) {
 }
 if (!process.env.TZ) process.env.TZ = 'Asia/Tokyo';
 
+export function parseLimit(v) {
+  if (v === undefined || String(v).trim() === '') return 200;
+  if (/^(none|off|なし)$/i.test(String(v).trim())) return null;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? n : 200;
+}
+
 const resolveFromRoot = (p) => (path.isAbsolute(p) ? p : path.join(ROOT, p));
 
 export const config = {
@@ -27,8 +34,8 @@ export const config = {
   claudeBin: process.env.CLAUDE_BIN || 'claude',
   claudeModel: process.env.CLAUDE_MODEL || '',
   claudeTimeoutMs: Number(process.env.CLAUDE_TIMEOUT_MS || 15 * 60 * 1000),
-  // 未設定なら null（上限なし）。数字の捏造を避けるため既定値は置かない
-  dailyCostLimitJpy: process.env.DAILY_API_COST_LIMIT_JPY ? Number(process.env.DAILY_API_COST_LIMIT_JPY) : null,
+  // 1日のAPIコスト上限（円）。未設定なら 200円。上限をなくすときだけ none と書く
+  dailyCostLimitJpy: parseLimit(process.env.DAILY_API_COST_LIMIT_JPY),
   usdJpyRate: process.env.USD_JPY_RATE ? Number(process.env.USD_JPY_RATE) : null,
 };
 

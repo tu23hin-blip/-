@@ -1,0 +1,12 @@
+# テーマのリサーチの設定（X＋note事業部 = メインアカウント）
+#   npm run research:x -- x-note   ／ 定期実行: 月・木 6:30（schedule.yaml）
+# keywords: 検索キーワード（5個まで）。キーワードごとに直近の投稿を読む（リポストは除く）
+# lang:     言語（ja = 日本語）
+# 読む件数は合計で RESEARCH_MAX_READS（.env、既定150）まで。1件 $0.005 なので 150件で約 $0.75
+keywords:
+  - AI副業
+  - 生成AI 仕事
+  - 広告運用
+  - ChatGPT 使い方
+  - AIツール 業務効率化
+lang: ja

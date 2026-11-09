@@ -28,7 +28,8 @@ export function loadSchedule(file = process.env.SCHEDULE_FILE || path.join(HERE,
   const jobs = (s.jobs || []).map((j) => {
     const cfg = loadDivisionConfig(j.division);
     if (!fs.existsSync(path.join(cfg.dir, 'run.js')) && !cfg.jobs?.[j.job]) throw new Error(`schedule.yaml: ${j.division} にジョブ ${j.job} がありません`);
-    return { ...j, key: `${j.division}:${j.job}`, parsed: parseCron(j.cron) };
+    const args = [].concat(j.args || []).map(String);
+    return { ...j, args, key: `${j.division}:${j.job}${args.length ? `:${args.join(',')}` : ''}`, parsed: parseCron(j.cron) };
   });
   return { retry, retryDelayMs: Number(s.retry_delay_seconds ?? 60) * 1000, jobs };
 }
@@ -97,7 +98,7 @@ export function createScheduler({ schedule, rec, spawnJob = defaultSpawn }) {
 }
 
 function defaultSpawn(job) {
-  return spawn(process.execPath, ['--disable-warning=ExperimentalWarning', RUN_CLI, job.division, job.job],
+  return spawn(process.execPath, ['--disable-warning=ExperimentalWarning', RUN_CLI, job.division, job.job, ...(job.args || [])],
     { cwd: config.root, env: process.env, stdio: ['ignore', 'inherit', 'inherit'] });
 }
 

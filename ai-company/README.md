@@ -35,7 +35,8 @@ npm run setup
 
 | 変数 | 意味 |
 |---|---|
-| `DAILY_API_COST_LIMIT_JPY` | 1日のAPIコスト上限（円）。超えたら全事業部を一時停止。空なら上限なし |
+| `DAILY_API_COST_LIMIT_JPY` | 1日のAPIコスト上限（円）。**既定 200**。超えたら全事業部を一時停止。上限をなくすときだけ `none` |
+| `RESEARCH_MAX_READS` | テーマのリサーチで読む件数の上限（合計、既定 150）。この件数を超えては絶対に読みません |
 | `USD_JPY_RATE` | APIコストを円にするレート。空なら 1ドル=150円で概算し、そのことをイベントに残す |
 | `CLAUDE_MODEL` | 使うモデル（空なら Claude Code の既定） |
 | `X_MAIN_*` / `X_SUB_*` / `X_FETCH_DAYS` | X の投稿の数字の自動取り込み（[X APIの設定](#x-apiの設定)）。空ならスキップ |
@@ -68,8 +69,9 @@ npm run db:reset -- --yes
 | 時刻 | 自動で動くもの | 人がやること |
 |---|---|---|
 | 毎朝 6:00 | **X の投稿の数字を取り込み**（`metrics:x`。直近3日の自分の投稿のインプレッション・クリック） | なし |
+| 月・木 6:30 | **テーマのリサーチ**（`research:x`。X＋note事業部のキーワードで直近の投稿を読み、今伸びているテーマの更新案を作る） | 更新案を承認／却下 |
 | 毎朝 7:00 | X＋note事業部が X投稿案を3本作る（取り込んだ数字と仮説を見て「伸びた型」2本＋「新仮説」1本） | 承認待ちを確認する |
-| 毎朝 9:00 | ショート動画事業部が台本を1本作る | 承認待ちを確認する |
+| 毎朝 9:00 | ショート動画事業部が台本を1本作る（**初動は一時停止中**。`npm run resume -- short-video` で再開） | 承認待ちを確認する |
 | 土曜 7:30 | note記事の下書き | 承認待ちを確認する |
 | 月曜 8:00／木曜 8:00 | 分析担当が週次レポート／中間レポートと目標の変更案を作る | レポートを読み、変更案を承認／却下 |
 | 売れた日 | — | ダッシュボードで売上と販売件数を入れる |
@@ -216,6 +218,57 @@ npm run metrics:x
 
 取り込みが失敗しても、毎日の生成ジョブはそのまま動きます。
 
+## 材料の自動作成
+
+X を見て、口調・実績・テーマの **材料（knowledge）** を自動で作ります。結果はすべて **承認待ち** に出し、**承認したときだけ** knowledge のファイルに反映します。
+いまは **X＋note事業部（メインアカウント、`x-note`）だけ** で動かします。キーの設定は「[X APIの設定](#x-apiの設定)」を先に済ませてください。
+
+| コマンド | いつ | 読むもの | 料金の目安 |
+|---|---|---|---|
+| `npm run voice:build -- x-note` | 最初の1回だけ | 自分の過去の投稿 最大200件（Owned Reads） | 200件 × $0.001 = 約 $0.20 |
+| `npm run research:x -- x-note` | 月・木 6:30（自動）／手動 | キーワード検索の直近の投稿 合計 `RESEARCH_MAX_READS` 件まで | 150件 × $0.005 = 約 $0.75 |
+
+どちらも、AI（`claude -p`）の費用が別にかかります。読んだ件数と推定費用はイベントログ（事業部ビューの「材料づくり」）に記録し、APIコストにも入れます。
+
+### 1. 口調の自動作成と実績の候補（最初の1回だけ）
+```bash
+npm run voice:build -- x-note
+```
+1. `GET /2/users/{自分のid}/tweets` で、自分の過去の投稿を **最大200件** 読みます（リポストと返信は除く。自分の投稿を自分のアプリで読むので割安な Owned Reads）
+2. 文の長さ・語尾・書き出し・改行・絵文字・ハッシュタグを **プログラムで数え**、インプレッション上位20件を「お手本」にして、`claude -p` に口調をまとめさせます
+3. 同じ200件から、実績や数字に当たる記述を `claude -p` に抜き出させます。**元の投稿に根拠の文言が実際にあるものだけ** を残し、ない数字は捨てます
+4. 承認待ちに届くもの:
+   - **口調の下書き**（1件）… 承認すると `knowledge/my-voice.md` を上書きします（前の内容は `outputs/knowledge-backups/` に保存）
+   - **実績の候補**（1項目ずつ）… 承認した項目だけ `knowledge/my-experience.md` の「承認済みの実績（X の自分の投稿から抽出）」に1行ずつ追記します。根拠の文言と元の投稿へのリンク付き
+5. **承認していない数字は、AIが実績として使いません**（AIは `my-experience.md` にある数字だけを実績として書くルールのまま）
+- 2回目以降は何もしません。やり直すときだけ `npm run voice:build -- x-note --force`
+- 新しいアカウントの部門（`アカウント: sub`）なら、書き込み先は `knowledge/accounts/sub/voice.md` と `experience.md` になります
+
+### 2. テーマのリサーチ（月・木 6:30）
+```bash
+npm run research:x -- x-note
+```
+1. [`knowledge/research.yaml`](knowledge/research.yaml) の **キーワード（5個まで）** と **言語（ja）** で、`GET /2/tweets/search/recent` で直近の投稿を読みます（リポストは除く）
+   ```yaml
+   keywords:
+     - AI副業
+     - 生成AI 仕事
+   lang: ja
+   ```
+2. 読む件数は **合計で `RESEARCH_MAX_READS`（既定150）まで** を、キーワードに均等に割り振ります（5個なら30件ずつ）。**上限を超えては絶対に読みません**。さらに、今日のAPIコストの残り（`DAILY_API_COST_LIMIT_JPY`）で読める件数が少なければ、そこまで減らします
+3. 読んだ投稿を `public_metrics` でスコア付けします（スコア = いいね + リポスト×2 + 引用 + インプレッション÷100）。上位30件を `claude -p` に渡し、「今伸びているテーマ」を5〜10個（テーマ名・なぜ伸びているか・自分ならどう書くか）まとめさせます
+4. **他人の投稿の文章・言い回しは書き写しません**。テーマの手がかりとしてだけ使います
+   - AIへの指示と Skill の禁止事項に明記しています
+   - AIの出力が元の投稿と **12字以上一致** したテーマは、プログラムが捨てます
+   - 他人の投稿の本文は、DB・イベントログ・成果物・knowledge のどこにも保存しません
+5. 承認待ちに届くもの: **テーマの更新案**（1件）… 承認すると `knowledge/themes.md` の「今伸びているテーマ」の部分だけを置き換えます（3本柱などほかの部分はそのまま）。翌朝7時の X投稿案から、このテーマを優先候補として使います
+- キーワードを変えるときは `knowledge/research.yaml` を書き換えるだけです
+
+### 費用と1日の上限について
+- 1日のAPIコスト上限は **200円**（`DAILY_API_COST_LIMIT_JPY`）。超えると、その時点で全事業部が一時停止します（再開は `npm run resume-all`）
+- リサーチ1回の X の費用は最大 約 $0.75（150件）≒ 113円（1ドル=150円）。AI（`claude -p`）の費用はこれとは別にかかります
+- 月・木はリサーチ・X投稿案・中間／週次レポートが同じ日に動くので、200円に届きやすい日です。届いて止まるようなら、`RESEARCH_MAX_READS` を減らす（例: 100）か、上限を上げてください
+
 ## 事業部を手動で動かす
 
 ```bash
@@ -250,7 +303,8 @@ npm run division -- short-video
 | `x-note:weekly-note` | 土曜 7:30 | note記事の下書き |
 | `analyst:weekly` | 月曜 8:00 | 週次レポート（先週の月〜日と前週）と目標の更新案 |
 | `analyst:midweek` | 木曜 8:00 | 中間レポート（直近7日とその前7日）と目標の更新案 |
-| `short-video:main` | 毎朝 9:00 | ショート動画の台本1本 |
+| `materials:research:x-note` | 月・木 6:30 | テーマのリサーチ（`research:x`。メインだけ。アナリストの8時より前） |
+| `short-video:main` | 毎朝 9:00 | ショート動画の台本1本（初動は事業部を一時停止しているので動かない。予定は残してある） |
 
 ### 起動
 ```bash
@@ -286,7 +340,14 @@ npm run scheduler -- --run-now
   ```bash
   npm run pause-all
   ```
+  ```bash
+  npm run pause -- short-video
+  ```
+  ```bash
+  npm run resume -- short-video
+  ```
   事業部ごとの一時停止と再開は、事業部ビューの詳細画面のボタンでもできます。
+- **初動は X＋note事業部だけ** で動かします。short-video は新しく登録するときは一時停止の状態で入ります（`initial_status: paused`）。以前から使っている DB でショート動画が動いている場合は、`npm run pause -- short-video` を1回実行してください
 
 ### Mac で常駐させる（ログイン時に自動起動）
 1. [`engine/scheduler/com.ai-company.scheduler.plist.example`](engine/scheduler/com.ai-company.scheduler.plist.example) をコピーし、`/Users/YOU/ai-company` と node のパス（`which node`）、PATH（`which claude` があるフォルダ）を自分の環境に書き換える
@@ -332,7 +393,7 @@ npm run new-division -- specs/sub-x.yaml --account sub
 
 ## 最初に書き換えてほしいファイル
 
-- [`knowledge/my-voice.md`](knowledge/my-voice.md): 口調のお手本。あなたの過去の投稿を貼ってください
+- [`knowledge/my-voice.md`](knowledge/my-voice.md): 口調のお手本。X のキーを入れたら `npm run voice:build -- x-note` で自動で下書きを作れます（「材料の自動作成」）
 - [`knowledge/my-experience.md`](knowledge/my-experience.md): あなたの実体験と実績の数字。**AIはここにある数字だけを実績として書きます**
 - [`knowledge/themes.md`](knowledge/themes.md): 発信テーマ
 
@@ -398,6 +459,7 @@ npm test
 | 「数字の取り込み」が赤い | タイムラインのメッセージを見る。402/401/403 の対処は「X APIの設定」の「エラーのとき」 |
 | X の投稿が自動で投稿済みにならない | 本文の先頭40字が下書きと違う（投稿前に書き換えた）か、同じ書き出しの下書きが複数ある。承認待ちタブで URL を入れる |
 | `claude を起動できません` | `which claude` を確認。launchd の場合は plist の PATH に claude のあるフォルダを入れる |
-| 事業部が動かない | `npm run status` で paused になっていないか確認する。コスト上限で止まっていたら `npm run resume-all` |
+| 事業部が動かない | `npm run status` で paused になっていないか確認する。コスト上限で止まっていたら `npm run resume-all`（1つだけなら `npm run resume -- <slug>`） |
+| 「材料づくり」が赤い | タイムラインを見る。research.yaml のキーワードが6個以上、キーが空、クレジット切れ（402）など |
 | ずっと「実行中」のまま | 次の実行時に自動で「中断」扱いになります。すぐ直すなら `npm run division -- <slug>` |
 | 画面が古い | `npm run web` を再起動する。DB の場所は `.env` の `DB_PATH` |

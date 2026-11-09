@@ -1,12 +1,14 @@
 // X API v2 の最小クライアント（読み取り専用）。投稿系のAPIはあえて作らない（投稿は人が手動で行う）。
-// 使うのは2つだけ:
-//   GET /2/users/me            … 自分のユーザーID（最初の1回だけ。以後は保存した値を使う）
-//   GET /2/users/{id}/tweets   … 自分の投稿の数字（自分のアプリで自分の投稿を読む = Owned Reads、1件 $0.001）
+// 使うのは3つだけ:
+//   GET /2/users/me              … 自分のユーザーID（最初の1回だけ。以後は保存した値を使う）
+//   GET /2/users/{id}/tweets     … 自分の投稿（自分のアプリで自分の投稿を読む = Owned Reads、1件 $0.001）
+//   GET /2/tweets/search/recent  … テーマのリサーチ（他人の投稿 = 通常料金、1件 $0.005）。読む件数は呼び出し側で上限を守る
 // GET /2/tweets?ids=... は通常料金（1件 $0.005）なので使わない。
 import { oauth1Header } from './oauth1.js';
 
 export const X_API_BASE = 'https://api.x.com';
 export const OWNED_READ_USD = 0.001;
+export const SEARCH_READ_USD = 0.005;
 export const TWEET_FIELDS = 'public_metrics,non_public_metrics,created_at';
 
 export class XApiError extends Error {
@@ -83,6 +85,31 @@ export function createXClient(creds, { fetchImpl = globalThis.fetch, baseUrl = X
         'tweet.fields': TWEET_FIELDS,
       });
       return { tweets: body?.data || [], nextToken: body?.meta?.next_token || null, resultCount: body?.meta?.result_count ?? (body?.data || []).length };
+    },
+    /**
+     * 自分の過去の投稿を最大 limit 件（リポストと返信は除く）。100件ずつページをたどる。
+     * 期間は指定しない（口調づくり用）。読む件数が limit を超えないよう max_results を絞る。
+     */
+    async getOwnHistory(userId, { limit = 200 } = {}) {
+      const out = [];
+      let token = null;
+      while (out.length < limit) {
+        const want = Math.min(100, limit - out.length);
+        if (want < 5) break; // max_results の下限は5
+        const params = { max_results: String(want), exclude: 'retweets,replies', 'tweet.fields': 'public_metrics,created_at' };
+        if (token) params.pagination_token = token;
+        const body = await get(`/2/users/${encodeURIComponent(userId)}/tweets`, params);
+        out.push(...(body?.data || []).slice(0, limit - out.length));
+        token = body?.meta?.next_token || null;
+        if (!token) break;
+      }
+      return out;
+    },
+    /** 直近の投稿を検索（1回の呼び出しで max_results 件まで。10〜100） */
+    async searchRecent(query, { maxResults }) {
+      if (!(maxResults >= 10 && maxResults <= 100)) throw new XApiError(`検索の max_results は10〜100です（${maxResults}）`, { retryable: false });
+      const body = await get('/2/tweets/search/recent', { query, max_results: String(maxResults), 'tweet.fields': 'public_metrics,created_at,lang' });
+      return (body?.data || []).slice(0, maxResults);
     },
   };
 }

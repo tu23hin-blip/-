@@ -5,6 +5,14 @@ import { KIND_LABEL, fmtTime, fmtNum, isNum } from '@/lib/format';
 import Markdown from './Markdown';
 
 const APPROVAL_LABEL = { pending: '承認待ち', approved: '承認済み', rejected: '却下' };
+// 承認／却下だけの項目（修正依頼はできない）と、承認したときに何が起きるか
+const APPROVE_ONLY = ['goal_update', 'voice_update', 'experience_candidate', 'themes_update'];
+const APPLY_HINT = {
+  goal_update: () => '承認すると今週の目標が書き換わります',
+  voice_update: (m) => `承認すると ${m.target_path} を上書きします（前の内容はバックアップ）`,
+  experience_candidate: (m) => `承認すると ${m.target_path} に1行追記します。却下した数字はAIが実績として使いません`,
+  themes_update: (m) => `承認すると ${m.target_path} の「今伸びているテーマ」を置き換え、毎朝の生成で使います`,
+};
 
 /** 成果物1件。mode: inbox（承認操作）／approved（コピーと投稿URL登録）／view（閲覧のみ） */
 export default function OutputCard({ output, mode = 'view', onChange, showDivision = false }) {
@@ -55,6 +63,7 @@ export default function OutputCard({ output, mode = 'view', onChange, showDivisi
         <span className="sub">{showDivision && `${output.division_name} ・ `}{fmtTime(output.created_at)}</span>
       </div>
       {meta.theme && <div className="sub">テーマ: {meta.theme}</div>}
+      {meta.source_url && <div className="sub">根拠: 「{meta.quote}」 <a href={meta.source_url} target="_blank" rel="noreferrer">元の投稿</a></div>}
       {meta.hypothesis && <div className="sub hypothesis">仮説: {meta.hypothesis}</div>}
       {Array.isArray(meta.warnings) && meta.warnings.length > 0 && (
         <ul className="warn-list">{meta.warnings.map((w, i) => <li key={i}>⚠ {w}</li>)}</ul>
@@ -83,8 +92,8 @@ export default function OutputCard({ output, mode = 'view', onChange, showDivisi
           <div className="actions">
             <button className="btn primary" disabled={busy} onClick={() => act('approve')}>承認</button>
             <button className="btn danger" disabled={busy} onClick={() => act('reject')}>却下</button>
-            <button className="btn" disabled={busy} onClick={() => act('revise')}>修正を依頼</button>
-            {meta.type === 'goal_update' && <span className="sub">承認すると今週の目標が書き換わります</span>}
+            {!APPROVE_ONLY.includes(meta.type) && <button className="btn" disabled={busy} onClick={() => act('revise')}>修正を依頼</button>}
+            {APPLY_HINT[meta.type] && <span className="sub">{APPLY_HINT[meta.type](meta)}</span>}
           </div>
         </>
       )}

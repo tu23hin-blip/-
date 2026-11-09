@@ -15,7 +15,7 @@ function rng(seed) {
 
 const SEED_DIVISIONS = [
   { slug: 'x-note', name: 'X＋note事業部', skill_name: 'x-note', status: 'active', weekly_goal: { metric: 'impressions', target: 25000 } },
-  { slug: 'short-video', name: 'ショート動画事業部', skill_name: 'short-video', status: 'active', weekly_goal: { metric: 'impressions', target: 60000 } },
+  { slug: 'short-video', name: 'ショート動画事業部', skill_name: 'short-video', status: 'paused', weekly_goal: { metric: 'impressions', target: 60000 } },
   { slug: 'site-llmo', name: '自サイト（LLMO）事業部', skill_name: 'site-llmo', status: 'paused', weekly_goal: { metric: 'clicks', target: 300 } },
 ];
 

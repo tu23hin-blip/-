@@ -1,6 +1,8 @@
 // 事業部の状態を一括で変える／確認する。
 //   npm run pause-all   … 全事業部を一時停止
 //   npm run resume-all  … 全事業部を再開（APIコスト上限で止まったあとなど）
+//   npm run pause -- short-video   … 1つの事業部を一時停止
+//   npm run resume -- short-video  … 1つの事業部を再開
 //   node engine/cli/status.js list
 import { getDb, createRecorder } from '../db/index.js';
 import { todayApiCost } from '../db/queries.js';
@@ -9,6 +11,11 @@ import { config } from '../config.js';
 const rec = createRecorder(getDb());
 const cmd = process.argv[2] || 'list';
 const rows = rec.db.prepare('SELECT slug, name, status FROM divisions ORDER BY id').all();
+if (cmd === 'pause' || cmd === 'resume') {
+  const slug = process.argv[3];
+  if (!slug) { console.error(`使い方: npm run ${cmd} -- <事業部slug>`); process.exit(1); }
+  rec.set_division_status(slug, cmd === 'pause' ? 'paused' : 'active', cmd === 'pause' ? 'コマンドで一時停止' : 'コマンドで再開');
+}
 if (cmd === 'pause-all' || cmd === 'resume-all') {
   const to = cmd === 'pause-all' ? 'paused' : 'active';
   for (const d of rows) if (d.status !== to) rec.set_division_status(d.slug, to, cmd === 'pause-all' ? 'コマンドで一括停止' : 'コマンドで一括再開');

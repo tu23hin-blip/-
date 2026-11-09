@@ -1,0 +1,6 @@
+# テーマのリサーチの設定（サブアカウント）。サブアカウントの部門を登録したら書き換える
+#   npm run research:x -- <部門>
+# keywords は5個まで。lang は言語（ja）
+keywords:
+  - （キーワード1）
+lang: ja

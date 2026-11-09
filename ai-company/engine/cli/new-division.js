@@ -44,7 +44,7 @@ export function normalizeSpec(raw) {
     account: pick(raw, 'アカウント', 'account') == null ? null : String(pick(raw, 'アカウント', 'account')).trim(),
   };
   if (!/^[a-z0-9][a-z0-9-]{1,30}$/.test(spec.slug)) errors.push('slug は英小文字・数字・ハイフンで2〜31文字にしてください');
-  if (['analyst', 'metrics'].includes(spec.slug)) errors.push(`slug「${spec.slug}」は予約済みです`);
+  if (['analyst', 'metrics', 'materials'].includes(spec.slug)) errors.push(`slug「${spec.slug}」は予約済みです`);
   if (!spec.name) errors.push('名前 を書いてください');
   if (!spec.what) errors.push('やること を書いてください');
   if (!OUTPUT_KINDS.includes(spec.kind)) errors.push(`成果物.種類 は ${OUTPUT_KINDS.join(' / ')} のどれかにしてください`);
@@ -112,6 +112,7 @@ export function createDivision(spec, { force = false, rec = null } = {}) {
   // 2) 事業部の設定
   const division = {
     slug: spec.slug, name: spec.name, skill: spec.slug,
+    ...(spec.account ? { knowledge_account: spec.account } : {}),
     ...(spec.weekly_goal ? { weekly_goal: spec.weekly_goal } : {}),
     ...(spec.checks.max_seconds ? { checks: { max_seconds: Number(spec.checks.max_seconds) } } : {}),
     jobs: {

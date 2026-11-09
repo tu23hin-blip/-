@@ -1,5 +1,6 @@
 # 定時実行の設定（時刻は TZ = .env の TZ、既定 Asia/Tokyo）
 # cron 形式: "分 時 日 月 曜日"（曜日 0=日, 1=月 … 6=土）
+# args は対象の部門など（例: materials の research は args: [x-note]）。
 # 違う事業部は並列で動きます。同じ事業部は二重起動しません（実行中ならスキップ）。
 retry: 1                # 失敗時のリトライ回数（最大1）
 retry_delay_seconds: 60
@@ -8,6 +9,10 @@ jobs:
   - division: metrics
     job: x
     cron: "0 6 * * *"       # 毎朝6時: X の投稿の数字を取り込み（7時の生成より前）。失敗しても他のジョブは動く
+  - division: materials
+    job: research
+    args: [x-note]
+    cron: "30 6 * * 1,4"    # 月・木 6:30: テーマのリサーチ（メインだけ。アナリストの8時より前）
   - division: x-note
     job: daily
     cron: "0 7 * * *"       # 毎朝7時: X投稿案3本

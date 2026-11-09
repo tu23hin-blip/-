@@ -12,7 +12,27 @@ if (mode === 'badjson') { out({ type: 'result', is_error: false, result: 'JSON�
 
 const post = (i) => `例: 議事録の要約で、最初に「決定事項／保留／担当と期限」の3つの見出しを指定すると、手直しが減ります。ポイントは要約の精度より型を先に決めること。今日の会議メモで試してみてください。テスト投稿${i}。見出しは3つまで、各項目は1行で書かせると読み返しやすくなります。※AI生成`;
 let result;
-if (process.argv.includes('--agent')) {
+if (/^ジョブ: voice/m.test(prompt)) {
+  // 全投稿の最初の1件から根拠の文言を写す（本物の引用）＋ 投稿にない数字（捨てられるべき候補）
+  const all = prompt.split('## 全投稿')[1] || '';
+  const m = all.match(/\[id:(\d+)\] (.+)/);
+  const quote = m ? Array.from(m[2]).slice(0, 12).join('') : '';
+  result = {
+    voice_markdown: '## 基本\n- 一人称は「私」。です・ます調\n## X投稿の型\n- 1行目は数字で始める\n## 避けること\n- 煽らない',
+    experience_candidates: m ? [
+      { text: `投稿で紹介した実績: ${quote}`, source_id: m[1], quote },
+      { text: '月収100万円を達成した', source_id: m[1], quote: '月収100万円を達成' },
+    ] : [],
+  };
+} else if (/^ジョブ: research/m.test(prompt)) {
+  // 1件目の投稿から15字を写したテーマ（捨てられるべき）＋ 自分の言葉のテーマ6件
+  const first = (prompt.match(/\[score:[^\]]*\] (.+)/) || [])[1] || '';
+  const copied = Array.from(first).slice(0, 15).join('');
+  result = { themes: [
+    { name: 'コピーしたテーマ', why: `${copied}が伸びている`, my_angle: 'そのまま書く' },
+    ...[1, 2, 3, 4, 5, 6].map((i) => ({ name: `テーマ${i}`, why: `理由${i}：反応が集まっている`, my_angle: `自分なら手順${i}を数字で示す` })),
+  ] };
+} else if (process.argv.includes('--agent')) {
   const job = (prompt.match(/ジョブ: (\w+)/) || [])[1] || 'weekly';
   result = { overall: `テスト用の全体所感（${job}）`, divisions: [{ slug: 'x-note', summary: '先週は横ばい', good_posts: 'AIツール系', bad_posts: '広告系', policies: ['方針1', '方針2', '方針3'], goal_proposal: { metric: 'impressions', target: 30000, reason: 'テスト' } }] };
 } else if (/ジョブ: weekly-note/.test(prompt)) {

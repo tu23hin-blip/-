@@ -59,7 +59,7 @@ export function headKey(text, n = 40) {
 const tokenHash = (token) => crypto.createHash('sha256').update(token).digest('hex').slice(0, 12);
 
 /** 自分のユーザーID（保存済みならそれを使う。アクセストークンが変わったときだけ取り直す） */
-async function ownUser(rec, client, envPrefix, creds) {
+export async function ownUser(rec, client, envPrefix, creds) {
   const key = `x_user:${envPrefix}`;
   const hash = tokenHash(creds.accessToken);
   let cached = null;

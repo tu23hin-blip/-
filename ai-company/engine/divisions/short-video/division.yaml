@@ -2,6 +2,8 @@
 slug: short-video
 name: ショート動画事業部
 skill: short-video
+# 初動は X＋note事業部だけで動かすため、登録時は一時停止。再開: npm run resume -- short-video（schedule.yaml の予定は残してある）
+initial_status: paused
 weekly_goal:
   metric: impressions
   target: 60000

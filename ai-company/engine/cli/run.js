@@ -2,6 +2,7 @@
 //   npm run division -- x-note            （ジョブ省略時は最初のジョブ = daily）
 //   npm run division -- x-note weekly-note
 //   npm run division -- x-note revise     （修正依頼だけ処理）
+//   npm run division -- materials research x-note （3つ目以降は対象の部門などの引数）
 //   npm run division -- x-note daily --force （一時停止中でも実行）
 // 終了コード: 0=成功, 2=失敗, 3=スキップ（実行中・一時停止・コスト上限）, 4=失敗（リトライしても直らない: クレジット切れ・キーの間違いなど）
 import { runJob } from '../runner.js';
@@ -10,7 +11,7 @@ import { loadDivisionConfig, listDivisionConfigs } from '../registry.js';
 
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const force = process.argv.includes('--force');
-const [slug, jobArg] = args;
+const [slug, jobArg, ...jobArgs] = args;
 if (!slug) {
   console.error('使い方: npm run division -- <事業部slug> [ジョブ名]');
   console.error('事業部: ' + listDivisionConfigs().map((c) => `${c.slug}（${Object.keys(c.jobs || {}).join(', ') || 'run.js'}）`).join(' / '));
@@ -26,9 +27,9 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
     setTimeout(() => process.exit(2), 5000).unref();
   });
 }
-console.log(`▶ ${cfg.name} / ${jobId} を実行します…`);
+console.log(`▶ ${cfg.name} / ${jobId}${jobArgs.length ? ` (${jobArgs.join(' ')})` : ''} を実行します…`);
 const t0 = Date.now();
-const r = await runJob(slug, jobId, { force });
+const r = await runJob(slug, jobId, { force, options: { args: jobArgs } });
 const sec = Math.round((Date.now() - t0) / 1000);
 if (r.status === 'done') { console.log(`✓ 完了（${sec}秒）${r.taskId ? ` タスク #${r.taskId}` : ''}${r.taskStatus === 'awaiting_approval' ? ' → 承認待ちに出しました' : ''}`); process.exit(0); }
 if (r.status === 'skipped') { console.log(`- スキップ: ${r.reason}`); process.exit(3); }

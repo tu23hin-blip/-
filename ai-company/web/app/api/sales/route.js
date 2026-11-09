@@ -18,7 +18,7 @@ export async function POST(req) {
   try {
     const { division, date, revenue_jpy, sales_count } = await req.json();
     if (!division) return fail('事業部を選んでください');
-    if (['analyst', 'metrics'].includes(division)) return fail('分析担当・数字の取り込みには売上を入力できません');
+    if (['analyst', 'metrics', 'materials'].includes(division)) return fail('社内の部門（分析担当・数字の取り込み・材料づくり）には売上を入力できません');
     return ok({ ok: true, saved: recorder().record_sales({ division, date, revenue_jpy, sales_count }) });
   } catch (e) { return fail(e); }
 }
