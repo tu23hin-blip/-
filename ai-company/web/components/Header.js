@@ -7,6 +7,7 @@ const TABS = [
   { href: '/', label: '経営ダッシュボード', match: (p) => p === '/' || p.startsWith('/reports') },
   { href: '/divisions', label: '事業部ビュー', match: (p) => p.startsWith('/divisions') },
   { href: '/inbox', label: '承認待ち', match: (p) => p.startsWith('/inbox'), badge: true },
+  { href: '/office', label: 'オフィス', match: (p) => p.startsWith('/office') },
 ];
 
 export default function Header() {

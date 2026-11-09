@@ -224,3 +224,66 @@ export function outputDetail(db, id) {
 export function todayApiCost(db, today = localDate()) {
   return db.prepare("SELECT COALESCE(SUM(value),0) s FROM metrics WHERE name = 'api_cost_jpy' AND date = ?").get(today).s;
 }
+
+// ---------------- オフィス画面 ----------------
+// スタッフの状態: 一時停止（席を外している）／作業中／失敗／承認待ち／待機
+export function staffState(d) {
+  if (d.running.length > 0) return 'working';
+  if (d.status === 'paused') return 'away';
+  if (d.lamp === 'failed') return 'failed';
+  if (d.lamp === 'awaiting') return 'awaiting';
+  return 'idle';
+}
+
+const oneLine = (s, n = 40) => {
+  const a = Array.from(String(s || '').replace(/\s+/g, ' ').trim());
+  return a.length > n ? `${a.slice(0, n - 1).join('')}…` : a.join('');
+};
+
+/** 席の上の吹き出し（tasks と events から1行） */
+export function staffActivity(d, state) {
+  if (state === 'working') return oneLine(`${d.running[0].title.replace(/（\d{4}-\d{2}-\d{2}）$/, '')}を作業中`);
+  if (state === 'away') return '一時停止中（席を外しています）';
+  if (state === 'failed') return oneLine(`失敗: ${d.last_task?.error || d.last_task?.title || '原因を確認してください'}`);
+  if (state === 'awaiting') return `承認待ちが ${d.pending} 件あります`;
+  if (d.last_event) return oneLine(`休憩中・前回: ${d.last_event.message}`);
+  return '休憩中';
+}
+
+export function office(db, { today = localDate(), chatLimit = 40 } = {}) {
+  const overview = divisionsOverview(db, { today });
+  const dash = dashboard(db, { days: 7, today });
+  const goals = new Map(dash.goals.map((g) => [g.slug, g]));
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const staff = overview.map((d) => {
+    const state = staffState(d);
+    const g = goals.get(d.slug);
+    return {
+      slug: d.slug, name: d.name, status: d.status, state, lamp: d.lamp,
+      activity: staffActivity(d, state),
+      pending: d.pending, queued: d.queued, done_today: d.done_today,
+      running_since: d.running[0]?.started_at || null,
+      internal: INTERNAL_DIVISIONS.includes(d.slug),
+      goal_label: g?.goal_label ?? d.goal_label ?? null, goal_actual: g?.actual ?? null, goal_rate: g?.rate ?? null,
+    };
+  });
+  const events = db.prepare(`SELECT e.id, e.type, e.message, e.created_at, d.slug division_slug, d.name division_name
+    FROM events e LEFT JOIN divisions d ON d.id = e.division_id ORDER BY e.created_at DESC, e.id DESC LIMIT ?`).all(chatLimit);
+  const recentSales = db.prepare(`SELECT m.date, d.slug division_slug, d.name division_name, m.value amount,
+      (SELECT c.value FROM metrics c WHERE c.division_id = m.division_id AND c.date = m.date AND c.name = 'sales_count' AND c.output_id IS NULL) sales_count
+    FROM metrics m JOIN divisions d ON d.id = m.division_id
+    WHERE m.name = 'revenue_jpy' AND m.output_id IS NULL AND m.value > 0
+    ORDER BY m.date DESC, m.id DESC LIMIT 8`).all();
+  return {
+    today,
+    month_posts: sumMetric(db, 'posts', monthStart, today),
+    staff,
+    events,
+    sales: {
+      month_revenue: sumMetric(db, 'revenue_jpy', monthStart, today),
+      month_sales_count: sumMetric(db, 'sales_count', monthStart, today),
+      recent: recentSales,
+    },
+    seeded: dash.seeded,
+  };
+}

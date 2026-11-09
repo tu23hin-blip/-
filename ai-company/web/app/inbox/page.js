@@ -1,11 +1,22 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePoll } from '@/lib/usePoll';
 import OutputCard from '@/components/OutputCard';
 
 export default function InboxPage() {
   const { data, error, reload, updatedAt } = usePoll('/api/inbox');
   const [filter, setFilter] = useState('all');
+  const [slugParam, setSlugParam] = useState(null);
+  // オフィスの席から来たとき（/inbox?division=x-note）はその部門に絞る
+  useEffect(() => {
+    try { setSlugParam(new URLSearchParams(window.location.search).get('division')); } catch {}
+  }, []);
+  useEffect(() => {
+    if (!slugParam || !data) return;
+    const hit = data.pending.find((o) => o.division_slug === slugParam);
+    if (hit) setFilter(hit.division_name);
+    setSlugParam(null);
+  }, [slugParam, data]);
   if (error && !data) return <div className="error-box">{error}</div>;
   if (!data) return <p className="sub">読み込み中…</p>;
   const divisions = [...new Set(data.pending.map((o) => o.division_name))];

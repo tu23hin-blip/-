@@ -150,5 +150,10 @@ async function main() {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
-  main().catch((e) => { console.error(e.message); process.exit(1); });
+  main().catch((e) => {
+    console.error(e.message);
+    // 画面（事業部ビュー・オフィス）でも分かるように残す
+    try { createRecorder(getDb()).log_event({ type: 'fail', message: `スケジューラを起動できませんでした: ${e.message}` }); } catch {}
+    process.exit(1);
+  });
 }

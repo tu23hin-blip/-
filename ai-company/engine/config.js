@@ -7,6 +7,9 @@ export const ROOT = process.env.AI_COMPANY_ROOT
   ? path.resolve(process.env.AI_COMPANY_ROOT)
   : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+// 子プロセス（スケジューラ・事業部の実行）が別のフォルダから起動しても同じ場所を指すよう、絶対パスにそろえる
+if (process.env.AI_COMPANY_ROOT) process.env.AI_COMPANY_ROOT = ROOT;
+
 const envFile = path.join(ROOT, '.env');
 // テストでは .env（本物のAPIキー）を読まない
 if (fs.existsSync(envFile) && !process.env.AI_COMPANY_SKIP_DOTENV) {
