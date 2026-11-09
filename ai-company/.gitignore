@@ -19,6 +19,7 @@ engine/db/*.db
 engine/db/*.db-journal
 engine/db/*.db-wal
 engine/db/*.db-shm
+engine/db/backups/
 
 # Node / Next.js
 node_modules/

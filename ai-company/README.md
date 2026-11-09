@@ -62,15 +62,48 @@ npm run db:reset -- --yes
 
 ## 毎日の使い方
 
-1. AI が定時に下書きを作る（または手動: `npm run division -- x-note`）
-2. **承認待ち** タブで内容を確認して「承認／却下／修正を依頼」
-   - 警告（⚠）は機械チェックの結果です（文字数・誇大表現・PR表記・AI生成表記など）
+### 朝: 下書きを確認する（承認待ち タブ）
+1. AI が定時に下書きを作ります（X＋note は毎朝7時。手動なら `npm run division -- x-note`）
+2. **承認待ち** タブで内容を見て「承認／却下／修正を依頼」
+   - **仮説**: X投稿には1本ずつ「仮説」が付いています。3本のうち2本は【伸びた型】（直近で数字が良かった型をなぞる）、1本は【新仮説】（型を1か所だけ変えて試す）です
+   - **警告（⚠）** は機械チェックの結果です（文字数・誇大表現・PR表記・AI生成表記・仮説の書き忘れなど）
    - 「修正を依頼」はコメント必須です。次の実行で修正版が承認待ちに出ます（すぐ作るなら `npm run division -- x-note revise`）
 3. 承認したものは「本文をコピー」して、**自分で** X / note に投稿する
-4. 投稿したら URL を入れて「投稿済みにする」と、投稿数が記録されます
-5. 数字（インプレッション・売上など）は CSV で取り込む
+4. 投稿したら URL を入れて「投稿済みにする」と、投稿数が1つ増えます
+
+### 投稿の数日後: 投稿ごとの数字を入れる（承認待ち タブ → 投稿済み）
+5. 投稿済みのカードに **インプレッション** と **クリック** を入れて「数字を保存」
+   - X アナリティクスなどに出ている **その時点の累計** をそのまま入れてください
+   - 今日の日付で記録されます。同じ日に入れ直すと上書き、別の日に入れると新しい値として残り、**分析には最新の値** が使われます（合計はしません）
+   - 空欄の項目は変更しません（クリックだけ、インプだけでも保存できます）
+   - ここで入れた数字は「どの仮説が当たったか」の判断と、翌日以降の「伸びた型」の選定に使われます
+
+### 売れたら: 売上と販売件数を入れる（経営ダッシュボード）
+6. 経営ダッシュボードの **売上・件数の入力** で、事業部・日付・売上（円）・販売件数を入れて「保存」
+   - note・ASP などの管理画面を見て、その日の合計を入れます（同じ日に入れ直すと上書き。空欄の項目は変更しません）
+   - 事業部と日付を選ぶと、その日にすでに記録されている値が薄く表示されます
+   - 未来の日付には入れられません
+   - KPIカードの **販売件数** と **平均単価（売上 ÷ 件数）** に反映されます。平均単価は、売上と件数が **両方記録された日だけ** で計算します（件数が不明な日の売上は含めません）
+
+### 週2回: レポートを読む
+7. 分析担当が **月曜8時に週次レポート**（先週の月〜日と前週）、**木曜8時に中間レポート**（直近7日とその前7日）を作ります
+   - ダッシュボード下の「レポート（週次・中間）」から開けます。ファイルは `outputs/reports/` と `knowledge/reports/`
+   - 今週の目標の変更案は承認待ちに出ます。**承認したときだけ** 目標が書き換わります（同じ案が承認待ちに残っていれば重ねて出しません）
+   - 数字が足りないときは、レポートの「入力してほしい数字」に何を入れればよいかが書かれます
+
+### 数字の入れ方のまとめ
+
+| 数字 | どこで入れるか | 単位・意味 |
+|---|---|---|
+| 売上 `revenue_jpy` | 経営ダッシュボードの「売上・件数の入力」／CSV | その日の合計（円） |
+| 販売件数 `sales_count` | 経営ダッシュボードの「売上・件数の入力」／CSV | その日に売れた件数 |
+| 投稿ごとのインプレッション・クリック | 承認待ちタブ → 投稿済みカード／CSV（`url` 列つき） | 入力日時点の累計 |
+| 投稿数 `posts` | 「投稿済みにする」で自動 | その日の投稿本数 |
+| APIコスト `api_cost_jpy` | 自動（AIの実行ごと） | 円 |
+| 事業部全体のインプレッション・クリック、フォロワー、作業時間 | CSV | 日別の合計（フォロワーはその日の人数） |
 
 ### 数字の取り込み（CSV）
+まとめて入れたいとき、画面に入力欄がない数字（事業部全体のインプレッション・フォロワー・作業時間など）を入れるときに使います。
 ```bash
 npm run metrics:import -- data/2026-11.csv
 ```
@@ -78,12 +111,23 @@ npm run metrics:import -- data/2026-11.csv
 date,division,name,value,url
 2026-11-04,x-note,impressions,3120,
 2026-11-04,x-note,revenue_jpy,1500,
-2026-11-04,x-note,impressions,1820,https://x.com/you/status/123
+2026-11-04,x-note,sales_count,3,
+2026-11-04,x-note,followers,1024,
+2026-11-06,x-note,impressions,1820,https://x.com/you/status/123
 ```
-- `name` は `revenue_jpy / impressions / clicks / followers / posts / work_minutes / api_cost_jpy`
-- `value` が空欄なら「不明」として記録します（0 とは区別します）
-- `url` は任意です。投稿済みにした URL を入れると「投稿ごとの数字」になり、分析担当が伸びた／伸びなかった投稿を判断できます
+- `date` は `YYYY-MM-DD`（`2026/11/04` も可）、`division` は slug（`x-note`）か事業部名
+- `name` は `revenue_jpy / sales_count / impressions / clicks / followers / posts / work_minutes / api_cost_jpy`
+- `value` が空欄なら「不明」として記録します（0 とは区別します）。`1,200` や `¥1,500` も読めます
+- `url` は任意です。「投稿済みにする」で登録した URL を入れると **投稿ごとの数字**（その日時点の累計）になります。画面の投稿済みカードで入れたものと同じ扱いです
+- 同じ `date,division,name`（と同じ url）は上書きされます
 - 1行でもエラーがあると、何も取り込まずにエラー行を表示します
+
+### 古い DB を使っている場合
+`sales_count` の追加で DB の形式が変わりました。以前から使っている DB では、次のコマンドを1回実行してください（データは保持されます。実行前に `engine/db/backups/` にバックアップを作ります）。
+```bash
+npm run db:migrate
+```
+`npm run setup`（`npm run db:init`）でも同じ移行が行われます。移行前の DB を開こうとすると、画面やコマンドが「npm run db:migrate を実行してください」と表示して止まります。
 
 ## 事業部を手動で動かす
 
@@ -95,6 +139,9 @@ npm run division -- x-note weekly-note
 ```
 ```bash
 npm run analyst
+```
+```bash
+npm run analyst:midweek
 ```
 ```bash
 npm run division -- short-video
@@ -110,7 +157,8 @@ npm run division -- short-video
 |---|---|---|
 | `x-note:daily` | 毎朝 7:00 | X投稿案3本 |
 | `x-note:weekly-note` | 土曜 7:30 | note記事の下書き |
-| `analyst:weekly` | 月曜 8:00 | 週次レポートと目標の更新案 |
+| `analyst:weekly` | 月曜 8:00 | 週次レポート（先週の月〜日と前週）と目標の更新案 |
+| `analyst:midweek` | 木曜 8:00 | 中間レポート（直近7日とその前7日）と目標の更新案 |
 | `short-video:main` | 毎朝 9:00 | ショート動画の台本1本 |
 
 ### 起動
@@ -226,11 +274,15 @@ save_output({ task_id: id, kind: 'x_post', file_path, preview_text });       // 
 finish_task(id);                                                             // events: finish（承認待ちがあれば awaiting_approval）
 fail_task(id, err);                                                          // events: fail
 record_metric({ date: '2026-11-05', division: 'x-note', name: 'impressions', value: 1200 });
+// 画面からの入力も同じライブラリ経由（recorder() で取得）
+//   record_output_metrics(outputId, { impressions, clicks })   投稿ごと・今日時点の累計
+//   record_sales({ division, date, revenue_jpy, sales_count }) 売上と販売件数
 ```
 
 ### データベース
 `divisions / tasks / outputs / events / metrics`（詳細は [`engine/db/schema.sql`](engine/db/schema.sql)）。
-指定のカラムに加えて、`outputs.title / outputs.meta`（テーマ・警告・コメント）と `metrics.output_id`（投稿ごとの数字）を足しています。
+指定のカラムに加えて、`outputs.title / outputs.meta`（テーマ・仮説・警告・コメント）と `metrics.output_id`（投稿ごとの数字）を足しています。
+形式の変更は [`engine/db/migrate.js`](engine/db/migrate.js)（`npm run db:migrate`）で行います。
 
 ## テスト
 
@@ -244,6 +296,7 @@ npm test
 | 症状 | 対処 |
 |---|---|
 | `No such built-in module: node:sqlite` | Node を 22.13 以上にする |
+| `DBの形式が古いです` | `npm run db:migrate` を実行する（データは保持） |
 | `claude を起動できません` | `which claude` を確認。launchd の場合は plist の PATH に claude のあるフォルダを入れる |
 | 事業部が動かない | `npm run status` で paused になっていないか確認する。コスト上限で止まっていたら `npm run resume-all` |
 | ずっと「実行中」のまま | 次の実行時に自動で「中断」扱いになります。すぐ直すなら `npm run division -- <slug>` |

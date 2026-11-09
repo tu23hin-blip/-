@@ -60,6 +60,23 @@ function fill(tpl, vars) {
   return tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? '');
 }
 
+/** X投稿の事業部には「伸びた型＋新しい仮説」のルールを入れる（x-note と同じ運用） */
+export function hypothesisRule(spec) {
+  if (spec.kind !== 'x_post') return '';
+  const n = spec.count;
+  const split = n >= 2
+    ? `${n}本のうち${n - 1}本は直近で伸びた型、1本は新しい仮説。各投稿の meta.hypothesis に1行で書く。`
+    : '直近で伸びた型をなぞるか新しい仮説を試すかを決め、meta.hypothesis に1行で書く。';
+  return `## 仮説の記録（X投稿）
+- **${split}**
+- 「伸びた型」は、エンジンからの「投稿ごとの反応」で数字が良かった投稿の型をなぞる。反応データがなければ承認された投稿の型をなぞり、その旨を書く。
+- 「新しい仮説」は、まだ試していない型を1か所だけ変えて試す。
+- 出力 JSON の各投稿の \`hypothesis\` に1行（60字前後）で書き、先頭に【伸びた型】か【新仮説】を付ける。
+- 過去の hypothesis と反応を見て、外れた仮説は繰り返さない。
+
+`;
+}
+
 export function createDivision(spec, { force = false, rec = null } = {}) {
   const skillDir = path.join(config.skillsDir, spec.slug);
   const divDir = path.join(config.divisionsDir, spec.slug);
@@ -74,6 +91,8 @@ export function createDivision(spec, { force = false, rec = null } = {}) {
     summary: spec.what.split('\n')[0].slice(0, 80),
     what: spec.what, format: indent(spec.format),
     prohibited: spec.prohibited.map((p) => `- ${p}`).join('\n'),
+    hypothesis_rule: hypothesisRule(spec),
+    hypothesis_field: spec.kind === 'x_post' ? '【伸びた型】または【新仮説】で始まる1行（必須）' : 'この成果物で確かめたいこと（1行・任意）',
   });
   fs.mkdirSync(skillDir, { recursive: true });
   fs.writeFileSync(path.join(skillDir, 'SKILL.md'), skill);

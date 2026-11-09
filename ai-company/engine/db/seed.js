@@ -19,6 +19,12 @@ const SEED_DIVISIONS = [
   { slug: 'site-llmo', name: '自サイト（LLMO）事業部', skill_name: 'site-llmo', status: 'paused', weekly_goal: { metric: 'clicks', target: 300 } },
 ];
 
+const SAMPLE_HYPOTHESES = [
+  '【伸びた型】数字で始めるチェックリスト型（先週インプ上位）をなぞる',
+  '【伸びた型】数字の変化（Before→After）を1行目に置く型',
+  '【新仮説】1行目を問いかけにすると、数字始まりより反応が増えるか',
+];
+
 const SAMPLE_POSTS = [
   ['AI副業の見極め', '「AIで月◯万」系の商材、見るポイントは3つだけ。①実績の根拠（スクショではなく再現手順）②返金条件 ③サポートの中身。この3つが曖昧なら買わなくていい。私は②で見送ることが一番多いです。\n※AI生成'],
   ['広告運用の小ネタ', 'CTRが1.2%→2.0%に上がったとき、変えたのは画像ではなく1行目の文言でした。「〜な方へ」より「〜で困っていませんか？」の方が、うちの案件では反応が良かった。必ずA/Bで確かめてから全体に反映してます。\n※AI生成'],
@@ -58,7 +64,12 @@ export function seed(db, { today = localDate(), days = 30 } = {}) {
       rec.record_metric({ date, division: div['x-note'], name: 'posts', value: 2 + Math.round(rand()) });
       rec.record_metric({ date, division: div['x-note'], name: 'work_minutes', value: 20 + Math.round(rand() * 25) });
     }
-    if (!skip(0.1)) rec.record_metric({ date, division: div['x-note'], name: 'revenue_jpy', value: rand() < 0.45 ? 0 : 500 * (1 + Math.floor(rand() * 4)) });
+    if (!skip(0.1)) {
+      // note の有料記事（1本500円）が k 件売れた想定
+      const k = rand() < 0.45 ? 0 : 1 + Math.floor(rand() * 4);
+      rec.record_metric({ date, division: div['x-note'], name: 'revenue_jpy', value: 500 * k });
+      rec.record_metric({ date, division: div['x-note'], name: 'sales_count', value: k });
+    }
     rec.record_metric({ date, division: div['x-note'], name: 'api_cost_jpy', value: Math.round(25 + rand() * 40) });
     // ショート動画（後半だけ動いている想定）
     if (i < 18 && !skip(0.1)) {
@@ -76,7 +87,9 @@ export function seed(db, { today = localDate(), days = 30 } = {}) {
     if (rand() < 0.3) {
       rec.record_metric({ date, division: div['site-llmo'], name: 'impressions', value: Math.round(300 + rand() * 500) });
       rec.record_metric({ date, division: div['site-llmo'], name: 'clicks', value: Math.round(20 + rand() * 40) });
-      rec.record_metric({ date, division: div['site-llmo'], name: 'revenue_jpy', value: Math.round(rand() * 1500) });
+      const n = Math.floor(rand() * 4); // アフィリエイトの成約件数
+      rec.record_metric({ date, division: div['site-llmo'], name: 'revenue_jpy', value: n * 380 });
+      rec.record_metric({ date, division: div['site-llmo'], name: 'sales_count', value: n });
     }
   }
 
@@ -98,7 +111,7 @@ export function seed(db, { today = localDate(), days = 30 } = {}) {
       const approval = k === 2 && i % 3 === 0 ? 'rejected' : 'approved';
       const url = approval === 'approved' && k < 2 ? `https://x.com/example/status/seed-${i}-${k}` : null;
       const o = insOutput.run(taskId, div['x-note'], 'x_post', file, body.slice(0, 120), approval, url, iso(start - 3 * 60000),
-        `${theme} #${k + 1}`, JSON.stringify({ theme, dummy: true }));
+        `${theme} #${k + 1}`, JSON.stringify({ theme, hypothesis: SAMPLE_HYPOTHESES[k], dummy: true }));
       if (url) {
         rec.record_metric({ date, division: div['x-note'], name: 'impressions', value: Math.round(400 + rand() * 2500), output_id: Number(o.lastInsertRowid) });
       }
@@ -117,7 +130,7 @@ export function seed(db, { today = localDate(), days = 30 } = {}) {
     SAMPLE_POSTS.forEach(([theme, body], k) => {
       const file = writeSeedFile(`seed/x-note/${today}/x_post_${k + 1}.md`, body);
       insOutput.run(taskId, div['x-note'], 'x_post', file, body.slice(0, 120), 'pending', null, iso(start - 4 * 60000),
-        `${theme} #${k + 1}`, JSON.stringify({ theme, dummy: true }));
+        `${theme} #${k + 1}`, JSON.stringify({ theme, hypothesis: SAMPLE_HYPOTHESES[k], dummy: true }));
       insEvent.run(div['x-note'], taskId, 'progress', `成果物を保存（x_post・承認待ち）: ${theme} #${k + 1}`, iso(start - 4 * 60000));
     });
     insEvent.run(div['x-note'], taskId, 'finish', '完了（承認待ち 3 件）', iso(start - 5 * 60000));

@@ -5,6 +5,7 @@ import { usePoll } from '@/lib/usePoll';
 import { fmtYen, fmtNum, fmtPct, fmtMinutes, isNum, DASH } from '@/lib/format';
 import LineChart from './LineChart';
 import BarList from './BarList';
+import SalesForm from './SalesForm';
 
 const PERIODS = [7, 30, 90];
 
@@ -24,7 +25,7 @@ export default function Dashboard() {
     try { const v = Number(localStorage.getItem('dash-days')); if (PERIODS.includes(v)) setDays(v); } catch {}
   }, []);
   const choose = (d) => { setDays(d); try { localStorage.setItem('dash-days', String(d)); } catch {} };
-  const { data, error, updatedAt } = usePoll(`/api/dashboard?days=${days}`);
+  const { data, error, updatedAt, reload } = usePoll(`/api/dashboard?days=${days}`);
 
   if (error && !data) return <div className="error-box">読み込みに失敗しました: {error}</div>;
   if (!data) return <p className="sub">読み込み中…</p>;
@@ -52,11 +53,19 @@ export default function Dashboard() {
           note={isNum(m.prev_revenue) ? `前月同期間 ${fmtYen(m.prev_revenue)}` : '前月の売上データなし'} />
         <Kpi label="利益（売上 − APIコスト）" value={fmtYen(p.profit)} note={periodNote} tone={isNum(p.profit) && p.profit < 0 ? 'delta-down' : ''} />
         <Kpi label="APIコスト" value={fmtYen(p.api_cost_jpy)} note={periodNote} />
+        <Kpi label="販売件数" value={isNum(p.sales_count) ? `${fmtNum(p.sales_count)}件` : fmtNum(p.sales_count)} note={periodNote} />
+        <Kpi label="平均単価（売上 ÷ 件数）" value={fmtYen(p.avg_unit_price)} note={`${periodNote}・件数を記録した日のみ`} />
         <Kpi label="インプレッション" value={fmtNum(p.impressions)} note={periodNote} />
         <Kpi label="クリック" value={fmtNum(p.clicks)} note={periodNote} />
         <Kpi label="投稿数" value={fmtNum(p.posts)} note={periodNote} />
         <Kpi label="作業時間" value={fmtMinutes(p.work_minutes)} note={periodNote} />
       </div>
+
+      <section className="section card">
+        <h2>売上・件数の入力</h2>
+        <div className="sub">事業部ごとに、その日の売上と販売件数を入れます（note・ASPなどの管理画面を見て手で入力）。</div>
+        <SalesForm divisions={data.input_divisions || []} onSaved={reload} />
+      </section>
 
       <section className="section card">
         <h2>売上と利益の日別推移</h2>
@@ -83,7 +92,7 @@ export default function Dashboard() {
         <div className="sub" style={{ marginBottom: 6 }}>{data.week_start} 〜 {data.today}（月曜はじまり）</div>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>事業部</th><th>状態</th><th>今週の目標</th><th className="r">今週の実績</th><th>達成率</th></tr></thead>
+            <thead><tr><th>事業部</th><th>状態</th><th>今週の目標</th><th className="r">今週の実績</th><th>達成率</th><th className="r">今週の件数</th></tr></thead>
             <tbody>
               {data.goals.map((g) => (
                 <tr key={g.slug}>
@@ -94,6 +103,7 @@ export default function Dashboard() {
                   <td className="num">
                     {isNum(g.rate) ? <><span className="progress"><span style={{ width: `${Math.min(100, g.rate * 100)}%` }} /></span>{fmtPct(g.rate)}</> : DASH}
                   </td>
+                  <td className="r num">{isNum(g.week_sales_count) ? `${fmtNum(g.week_sales_count)}件` : DASH}</td>
                 </tr>
               ))}
             </tbody>
@@ -102,10 +112,10 @@ export default function Dashboard() {
       </section>
 
       <section className="section card">
-        <h2>週次レポート</h2>
+        <h2>レポート（週次・中間）</h2>
         {data.latest_report
           ? <p style={{ margin: '8px 0 0' }}>最新: <Link href={`/reports/${data.latest_report.id}`}>{data.latest_report.title || '週次レポート'}</Link></p>
-          : <p className="sub">まだありません（分析担当が毎週月曜に作成します）</p>}
+          : <p className="sub">まだありません（分析担当が毎週月曜に週次、木曜に中間レポートを作成します）</p>}
       </section>
     </>
   );

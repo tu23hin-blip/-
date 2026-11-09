@@ -6,19 +6,29 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { config, localDate } from '../config.js';
+import { pendingMigrations } from './migrate.js';
 
 const SCHEMA = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'schema.sql'), 'utf8');
 
-export const METRIC_NAMES = ['revenue_jpy', 'impressions', 'clicks', 'followers', 'posts', 'work_minutes', 'api_cost_jpy'];
+export const METRIC_NAMES = ['revenue_jpy', 'sales_count', 'impressions', 'clicks', 'followers', 'posts', 'work_minutes', 'api_cost_jpy'];
+// 投稿ごとに入力できる指標
+export const POST_METRIC_NAMES = ['impressions', 'clicks'];
 export const OUTPUT_KINDS = ['x_post', 'note_article', 'script', 'video', 'report'];
 
-export function openDb(dbPath = config.dbPath) {
+export function openDb(dbPath = config.dbPath, { skipMigrationCheck = false } = {}) {
   if (dbPath !== ':memory:') fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
   db.exec('PRAGMA busy_timeout = 10000;');
   if (dbPath !== ':memory:') db.exec('PRAGMA journal_mode = WAL;');
   db.exec('PRAGMA foreign_keys = ON;');
   db.exec(SCHEMA);
+  if (!skipMigrationCheck) {
+    const todo = pendingMigrations(db);
+    if (todo.length) {
+      db.close();
+      throw new Error(`DBの形式が古いです（${todo.join(' / ')}）。npm run db:migrate を実行してください（データは保持されます）`);
+    }
+  }
   return db;
 }
 
@@ -170,6 +180,59 @@ export function createRecorder(db) {
     record_metric({ date, division: div.id, name, value: (cur?.value ?? 0) + Number(value), output_id });
   }
 
+  function parseInput(v, label, { integer = false } = {}) {
+    if (v === null || v === undefined || String(v).trim() === '') return undefined; // 空欄 = 変更しない
+    const n = Number(String(v).replace(/[,，¥円件\s]/g, ''));
+    if (!Number.isFinite(n) || n < 0) throw new Error(`${label}は0以上の数値で入力してください`);
+    if (integer && !Number.isInteger(n)) throw new Error(`${label}は整数で入力してください`);
+    return n;
+  }
+
+  function checkInputDate(date) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) throw new Error('日付は YYYY-MM-DD で入力してください');
+    if (date > localDate()) throw new Error('未来の日付には入力できません');
+  }
+
+  /** 投稿ごとの数字（入力日時点の累計）を記録。空欄の項目は変更しない */
+  function record_output_metrics(output_id, { impressions, clicks, date = localDate() } = {}) {
+    checkInputDate(date);
+    const values = { impressions: parseInput(impressions, 'インプレッション', { integer: true }), clicks: parseInput(clicks, 'クリック', { integer: true }) };
+    const given = Object.entries(values).filter(([, v]) => v !== undefined);
+    if (given.length === 0) throw new Error('インプレッションかクリックのどちらかを入力してください');
+    return tx(db, () => {
+      const o = db.prepare('SELECT * FROM outputs WHERE id = ?').get(output_id);
+      if (!o) throw new Error(`成果物が見つかりません: ${output_id}`);
+      if (o.approval !== 'approved') throw new Error('承認済みの成果物だけ数字を入力できます');
+      for (const [name, value] of given) record_metric({ date, division: o.division_id, name, value, output_id });
+      log_event({ division: o.division_id, task_id: o.task_id, type: 'progress',
+        message: `投稿の数字を入力（${date}時点）: ${o.title || o.kind} — ${given.map(([n, v]) => `${n === 'impressions' ? 'インプ' : 'クリック'} ${v.toLocaleString('ja-JP')}`).join(' / ')}` });
+      return Object.fromEntries(given);
+    });
+  }
+
+  /** 売上・販売件数（事業部全体・日別）を記録。空欄の項目は変更しない */
+  function record_sales({ division, date, revenue_jpy, sales_count }) {
+    checkInputDate(date);
+    const div = resolveDivision(division);
+    const values = { revenue_jpy: parseInput(revenue_jpy, '売上'), sales_count: parseInput(sales_count, '販売件数', { integer: true }) };
+    const given = Object.entries(values).filter(([, v]) => v !== undefined);
+    if (given.length === 0) throw new Error('売上か販売件数のどちらかを入力してください');
+    return tx(db, () => {
+      for (const [name, value] of given) record_metric({ date, division: div.id, name, value });
+      log_event({ division: div.id, type: 'progress',
+        message: `売上を入力（${date}）: ${given.map(([n, v]) => (n === 'revenue_jpy' ? `¥${v.toLocaleString('ja-JP')}` : `${v}件`)).join(' / ')}` });
+      return get_sales({ division: div.id, date });
+    });
+  }
+
+  function get_sales({ division, date }) {
+    const div = resolveDivision(division);
+    const rows = db.prepare(`SELECT name, value FROM metrics WHERE division_id = ? AND date = ? AND output_id IS NULL
+      AND name IN ('revenue_jpy','sales_count')`).all(div.id, date);
+    const by = Object.fromEntries(rows.map((r) => [r.name, r.value]));
+    return { division: div.slug, date, revenue_jpy: by.revenue_jpy ?? null, sales_count: by.sales_count ?? null };
+  }
+
   function refreshTaskStatus(taskId) {
     if (taskId == null) return;
     const t = db.prepare('SELECT status FROM tasks WHERE id = ?').get(taskId);
@@ -250,7 +313,7 @@ export function createRecorder(db) {
   return {
     db, resolveDivision, ensure_division,
     start_task, queue_task, log_event, save_output, finish_task, fail_task,
-    record_metric, add_metric, set_approval, request_revision, set_published, set_division_status,
+    record_metric, add_metric, record_output_metrics, record_sales, get_sales, set_approval, request_revision, set_published, set_division_status,
     set_meta, get_meta,
   };
 }

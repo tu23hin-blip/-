@@ -26,7 +26,7 @@ description: {{name}}の作業手順。{{summary}} 投稿・公開は絶対に�
 
 {{format}}
 
-## 禁止事項
+{{hypothesis_rule}}## 禁止事項
 {{prohibited}}
 - 数字や実績を捏造しない（`my-experience.md` にあるもの以外は「例:」と明示する）
 - 誇大表現（「誰でも」「必ず」「放置で」「月◯万」など）を使わない
@@ -43,7 +43,7 @@ description: {{name}}の作業手順。{{summary}} 投稿・公開は絶対に�
   "theme": "今回のテーマ",
   "theme_reason": "なぜこのテーマにしたか（1〜2文）",
   "outputs": [
-    { "kind": "{{kind}}", "title": "管理用の短い見出し（20字以内）", "body": "成果物の本文（Markdown可）", "notes": "人間への補足（任意）" }
+    { "kind": "{{kind}}", "title": "管理用の短い見出し（20字以内）", "body": "成果物の本文（Markdown可）", "hypothesis": "{{hypothesis_field}}", "notes": "人間への補足（任意）" }
   ],
   "questions": ["人間に確認したいこと（なければ空配列）"]
 }
