@@ -36,8 +36,8 @@ export default function InboxPage() {
         {unposted.length === 0 ? <p className="empty card">手動投稿待ちはありません</p>
           : unposted.map((o) => <OutputCard key={o.id} output={o} mode="approved" showDivision onChange={reload} />)}
         {posted.length > 0 && (
-          <details className="section">
-            <summary style={{ cursor: 'pointer' }}>投稿済み（直近 {posted.length} 件）</summary>
+          <details className="section" open>
+            <summary style={{ cursor: 'pointer' }}>投稿済み（直近 {posted.length} 件・ここで投稿ごとの数字を入力）</summary>
             <div style={{ marginTop: 10 }}>{posted.map((o) => <OutputCard key={o.id} output={o} mode="approved" showDivision onChange={reload} />)}</div>
           </details>
         )}

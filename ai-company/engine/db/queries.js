@@ -8,11 +8,35 @@ const parseJSON = (s, fallback = null) => { if (!s) return fallback; try { retur
 const toLocalDate = (iso) => (iso ? localDate(new Date(iso)) : null);
 
 export const METRIC_LABELS = {
-  revenue_jpy: '売上', impressions: 'インプレッション', clicks: 'クリック', followers: 'フォロワー',
+  revenue_jpy: '売上', sales_count: '販売件数', impressions: 'インプレッション', clicks: 'クリック', followers: 'フォロワー',
   posts: '投稿数', work_minutes: '作業時間（分）', api_cost_jpy: 'APIコスト',
 };
 // 合計ではなく最新値で見る指標
 const SNAPSHOT_METRICS = new Set(['followers']);
+
+/**
+ * 投稿ごとの数字（metrics.output_id あり）は「入力日時点の累計」なので、合計せず最新の日付の値を使う。
+ * output_id, impressions, clicks, metrics_date（最新の入力日）を返すサブクエリ。
+ */
+export const LATEST_POST_METRICS_SQL = `
+  SELECT pm.output_id,
+    MAX(CASE WHEN pm.name = 'impressions' THEN pm.value END) AS impressions,
+    MAX(CASE WHEN pm.name = 'clicks' THEN pm.value END) AS clicks,
+    MAX(pm.date) AS metrics_date
+  FROM metrics pm
+  WHERE pm.output_id IS NOT NULL AND pm.value IS NOT NULL
+    AND pm.date = (SELECT MAX(m2.date) FROM metrics m2
+                   WHERE m2.output_id = pm.output_id AND m2.name = pm.name AND m2.value IS NOT NULL)
+  GROUP BY pm.output_id`;
+
+/** 期間内で売上と件数が両方記録された日（事業部×日）だけで平均単価を出す */
+export function avgUnitPrice(db, from, to, divisionId = null) {
+  const r = db.prepare(`SELECT SUM(r.value) rev, SUM(c.value) cnt FROM metrics r
+    JOIN metrics c ON c.division_id = r.division_id AND c.date = r.date AND c.name = 'sales_count' AND c.output_id IS NULL AND c.value IS NOT NULL
+    WHERE r.name = 'revenue_jpy' AND r.output_id IS NULL AND r.value IS NOT NULL AND r.date BETWEEN ? AND ?
+    ${divisionId ? 'AND r.division_id = ?' : ''}`).get(...[from, to, ...(divisionId ? [divisionId] : [])]);
+  return r.cnt > 0 ? r.rev / r.cnt : null;
+}
 
 function dateRange(from, to) {
   const out = [];
@@ -44,7 +68,7 @@ export function parseGoal(goalText) {
 
 export function goalLabel(goal) {
   if (!goal) return null;
-  const unit = goal.metric === 'revenue_jpy' || goal.metric === 'api_cost_jpy' ? '円' : goal.metric === 'work_minutes' ? '分' : '';
+  const unit = goal.metric === 'revenue_jpy' || goal.metric === 'api_cost_jpy' ? '円' : goal.metric === 'work_minutes' ? '分' : goal.metric === 'sales_count' ? '件' : '';
   return `${METRIC_LABELS[goal.metric] || goal.metric} ${Number(goal.target).toLocaleString('ja-JP')}${unit}`;
 }
 
@@ -77,7 +101,8 @@ export function dashboard(db, { days = 30, today = localDate() } = {}) {
   const mom = revenueThisMonth != null && revenuePrevMonth ? (revenueThisMonth - revenuePrevMonth) / revenuePrevMonth : null;
 
   const period = {};
-  for (const n of ['revenue_jpy', 'impressions', 'clicks', 'posts', 'work_minutes', 'api_cost_jpy']) period[n] = sumMetric(db, n, from, today);
+  for (const n of ['revenue_jpy', 'sales_count', 'impressions', 'clicks', 'posts', 'work_minutes', 'api_cost_jpy']) period[n] = sumMetric(db, n, from, today);
+  period.avg_unit_price = avgUnitPrice(db, from, today);
   period.profit = minus(period.revenue_jpy, period.api_cost_jpy);
 
   const divisions = db.prepare('SELECT * FROM divisions ORDER BY id').all();
@@ -87,7 +112,8 @@ export function dashboard(db, { days = 30, today = localDate() } = {}) {
     slug: d.slug, name: d.name, has_goal: !!d.weekly_goal,
     revenue: sumMetric(db, 'revenue_jpy', from, today, d.id),
     impressions: sumMetric(db, 'impressions', from, today, d.id),
-  })).filter((d) => d.has_goal || d.revenue != null || d.impressions != null);
+    sales_count: sumMetric(db, 'sales_count', from, today, d.id),
+  })).filter((d) => d.has_goal || d.revenue != null || d.impressions != null || d.sales_count != null);
   const shown = new Set(byDivision.map((d) => d.slug));
   const goals = divisions.filter((d) => shown.has(d.slug)).map((d) => {
     const goal = parseGoal(d.weekly_goal);
@@ -96,6 +122,8 @@ export function dashboard(db, { days = 30, today = localDate() } = {}) {
       slug: d.slug, name: d.name, status: d.status,
       goal, goal_label: goalLabel(goal) ?? (d.weekly_goal || null),
       actual, rate: goal && actual != null && goal.target ? actual / goal.target : null,
+      week_sales_count: sumMetric(db, 'sales_count', weekStart, today, d.id),
+      week_revenue: sumMetric(db, 'revenue_jpy', weekStart, today, d.id),
     };
   });
 
@@ -104,6 +132,8 @@ export function dashboard(db, { days = 30, today = localDate() } = {}) {
     month: { start: monthStart, revenue: revenueThisMonth, prev_revenue: revenuePrevMonth, prev_range: [prevMonthStart, prevSameDay], mom },
     period, daily, by_division: byDivision, goals,
     latest_report: latestReport(db),
+    // 売上入力フォームの選択肢（分析担当は売上を持たないので除く）
+    input_divisions: divisions.filter((d) => d.slug !== 'analyst').map((d) => ({ slug: d.slug, name: d.name })),
     seeded: db.prepare("SELECT value FROM app_meta WHERE key = 'seeded'").get()?.value === '1',
   };
 }
@@ -160,8 +190,11 @@ export function divisionDetail(db, slug) {
 
 /** 承認待ちの受け箱 */
 export function inbox(db) {
-  const q = (where, order, limit) => db.prepare(`SELECT o.*, d.name division_name, d.slug division_slug FROM outputs o
-    JOIN divisions d ON d.id = o.division_id WHERE ${where} ORDER BY ${order} LIMIT ${limit}`).all()
+  const q = (where, order, limit) => db.prepare(`SELECT o.*, d.name division_name, d.slug division_slug,
+      pm.impressions post_impressions, pm.clicks post_clicks, pm.metrics_date post_metrics_date
+    FROM outputs o JOIN divisions d ON d.id = o.division_id
+    LEFT JOIN (${LATEST_POST_METRICS_SQL}) pm ON pm.output_id = o.id
+    WHERE ${where} ORDER BY ${order} LIMIT ${limit}`).all()
     .map((o) => ({ ...o, meta: parseJSON(o.meta, {}), content: readOutputFile(o.file_path) }));
   return {
     pending: q("o.approval = 'pending'", 'o.created_at DESC, o.id DESC', 200),

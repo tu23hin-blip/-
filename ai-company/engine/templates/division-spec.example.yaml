@@ -26,7 +26,7 @@ slug: my-division            # 英小文字・数字・ハイフン（フォル�
   - recent_themes
   - rejections
 今週の目標:
-  指標: impressions          # revenue_jpy / impressions / clicks / followers / posts / work_minutes
+  指標: impressions          # revenue_jpy / sales_count / impressions / clicks / followers / posts / work_minutes
   目標値: 10000
 チェック:
   最大秒数: 60               # 台本の秒数表記がこれを超えたら警告（script のとき）

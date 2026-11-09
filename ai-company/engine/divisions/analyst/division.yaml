@@ -5,4 +5,6 @@ name: 分析担当
 skill: analyst
 jobs:
   weekly:
-    title: 週次レポート
+    title: 週次レポート（先週 月〜日 と前週を比較）
+  midweek:
+    title: 中間レポート（直近7日 と その前7日を比較）

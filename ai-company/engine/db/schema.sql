@@ -1,4 +1,5 @@
 -- AI会社 SQLite スキーマ
+-- 既存DBの形式変更は engine/db/migrate.js（npm run db:migrate）で行う
 -- 日時(created_at 等)は ISO8601(UTC)、metrics.date はローカル日付 YYYY-MM-DD
 
 CREATE TABLE IF NOT EXISTS divisions (
@@ -57,9 +58,9 @@ CREATE TABLE IF NOT EXISTS metrics (
   date        TEXT NOT NULL,
   division_id INTEGER NOT NULL REFERENCES divisions(id),
   name        TEXT NOT NULL CHECK (name IN
-              ('revenue_jpy','impressions','clicks','followers','posts','work_minutes','api_cost_jpy')),
+              ('revenue_jpy','sales_count','impressions','clicks','followers','posts','work_minutes','api_cost_jpy')),
   value       REAL,          -- NULL = 不明（0 とは区別する）
-  -- 拡張: 投稿ごとの数字（NULL = 事業部全体の数字）
+  -- 拡張: 投稿ごとの数字（NULL = 事業部全体の数字）。投稿ごとの値は「入力日時点の累計」で、最新の日付の値を使う
   output_id   INTEGER REFERENCES outputs(id)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_metrics

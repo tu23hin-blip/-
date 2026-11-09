@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { post, copyText } from '@/lib/usePoll';
-import { KIND_LABEL, fmtTime } from '@/lib/format';
+import { KIND_LABEL, fmtTime, fmtNum, isNum } from '@/lib/format';
 import Markdown from './Markdown';
 
 const APPROVAL_LABEL = { pending: '承認待ち', approved: '承認済み', rejected: '却下' };
@@ -12,6 +12,8 @@ export default function OutputCard({ output, mode = 'view', onChange, showDivisi
   const [open, setOpen] = useState(mode !== 'view');
   const [comment, setComment] = useState('');
   const [url, setUrl] = useState(output.published_url || '');
+  const [imp, setImp] = useState('');
+  const [clk, setClk] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const meta = output.meta || {};
@@ -24,7 +26,9 @@ export default function OutputCard({ output, mode = 'view', onChange, showDivisi
     try {
       await post(`/api/outputs/${output.id}`, { action, comment: comment.trim() || undefined, ...extra });
       setComment('');
-      setMsg(action === 'revise' ? '修正タスクを積みました。次の実行で修正版が承認待ちに出ます。' : '更新しました');
+      if (action === 'metrics') { setImp(''); setClk(''); }
+      setMsg(action === 'revise' ? '修正タスクを積みました。次の実行で修正版が承認待ちに出ます。'
+        : action === 'metrics' ? '今日の時点の数字として保存しました。' : '更新しました');
       onChange?.();
     } catch (e) { setMsg(e.message); } finally { setBusy(false); }
   };
@@ -51,6 +55,7 @@ export default function OutputCard({ output, mode = 'view', onChange, showDivisi
         <span className="sub">{showDivision && `${output.division_name} ・ `}{fmtTime(output.created_at)}</span>
       </div>
       {meta.theme && <div className="sub">テーマ: {meta.theme}</div>}
+      {meta.hypothesis && <div className="sub hypothesis">仮説: {meta.hypothesis}</div>}
       {Array.isArray(meta.warnings) && meta.warnings.length > 0 && (
         <ul className="warn-list">{meta.warnings.map((w, i) => <li key={i}>⚠ {w}</li>)}</ul>
       )}
@@ -92,6 +97,25 @@ export default function OutputCard({ output, mode = 'view', onChange, showDivisi
               ? <span className="sub">投稿済み: <a href={output.published_url} target="_blank" rel="noreferrer">{output.published_url}</a></span>
               : <span className="sub">手動で投稿したらURLを登録してください（投稿数が記録されます）</span>}
           </div>
+          {output.published_url && (
+            <form className="post-metrics" onSubmit={(e) => { e.preventDefault(); act('metrics', { impressions: imp, clicks: clk }); }}>
+              <div className="sub">
+                投稿の数字（今日の時点の累計）
+                {isNum(output.post_impressions) || isNum(output.post_clicks)
+                  ? ` ・ 前回 ${output.post_metrics_date}: インプ ${fmtNum(output.post_impressions)} / クリック ${fmtNum(output.post_clicks)}`
+                  : ' ・ まだ入力されていません'}
+              </div>
+              <div className="actions" style={{ marginTop: 4 }}>
+                <label className="field">インプレッション
+                  <input className="url" inputMode="numeric" placeholder="例: 1200" value={imp} onChange={(e) => setImp(e.target.value)} />
+                </label>
+                <label className="field">クリック
+                  <input className="url" inputMode="numeric" placeholder="例: 25" value={clk} onChange={(e) => setClk(e.target.value)} />
+                </label>
+                <button className="btn" type="submit" disabled={busy || (!imp.trim() && !clk.trim())}>数字を保存</button>
+              </div>
+            </form>
+          )}
           {!output.published_url && (
             <div className="actions" style={{ marginTop: 4 }}>
               <input className="url" style={{ marginTop: 0, flex: 1, minWidth: 200 }} placeholder="https://x.com/…" value={url} onChange={(e) => setUrl(e.target.value)} />

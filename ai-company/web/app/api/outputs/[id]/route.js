@@ -9,11 +9,11 @@ export async function GET(_req, { params }) {
   return o ? ok(o) : fail('成果物が見つかりません', 404);
 }
 
-// 承認／却下／修正コメント／手動投稿URLの登録（公開そのものは人間が手動で行う）
+// 承認／却下／修正コメント／手動投稿URLの登録／投稿ごとの数字（公開そのものは人間が手動で行う）
 export async function POST(req, { params }) {
   try {
     const id = Number((await params).id);
-    const { action, comment, url } = await req.json();
+    const { action, comment, url, impressions, clicks } = await req.json();
     const r = recorder();
     if (action === 'approve') r.set_approval(id, 'approved', { comment });
     else if (action === 'reject') r.set_approval(id, 'rejected', { comment });
@@ -21,7 +21,10 @@ export async function POST(req, { params }) {
     else if (action === 'publish') {
       if (!/^https?:\/\//.test(url || '')) return fail('投稿URLを https:// から入力してください');
       r.set_published(id, url);
-    } else return fail('action は approve / reject / revise / publish です');
+    } else if (action === 'metrics') {
+      // 入力日（今日）時点の累計として output_id 付きで upsert
+      return ok({ ok: true, saved: r.record_output_metrics(id, { impressions, clicks }) });
+    } else return fail('action は approve / reject / revise / publish / metrics です');
     return ok({ ok: true });
   } catch (e) { return fail(e); }
 }

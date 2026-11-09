@@ -1,7 +1,7 @@
 // Skill に渡す「エンジンからの情報」を DB から作る。division.yaml の jobs.<job>.context で選ぶ。
 //   recent_themes / post_reactions / rejections / latest_report / top_posts:<slug> / division_metrics
 import { config, localDate, addDays } from './config.js';
-import { latestReport, readOutputFile } from './db/queries.js';
+import { latestReport, readOutputFile, LATEST_POST_METRICS_SQL } from './db/queries.js';
 
 const parse = (s) => { try { return JSON.parse(s || '{}'); } catch { return {}; } };
 const since = (days) => new Date(Date.now() - days * 864e5).toISOString();
@@ -19,23 +19,31 @@ function recentThemes(db, div) {
 }
 
 function postStats(db, divisionId, days) {
+  // 投稿ごとの数字は「入力日時点の累計」なので最新の値を使う（合計しない）
   return db.prepare(`SELECT o.id, o.title, o.kind, o.meta, o.preview_text, o.published_url, o.created_at,
-      SUM(CASE WHEN m.name = 'impressions' THEN m.value END) imp,
-      SUM(CASE WHEN m.name = 'clicks' THEN m.value END) clk
-    FROM outputs o LEFT JOIN metrics m ON m.output_id = o.id
+      pm.impressions imp, pm.clicks clk, pm.metrics_date
+    FROM outputs o LEFT JOIN (${LATEST_POST_METRICS_SQL}) pm ON pm.output_id = o.id
     WHERE o.division_id = ? AND o.created_at >= ? AND o.approval = 'approved' AND o.kind != 'report'
-    GROUP BY o.id ORDER BY imp DESC NULLS LAST, o.created_at DESC`).all(divisionId, since(days));
+    ORDER BY imp DESC NULLS LAST, o.created_at DESC`).all(divisionId, since(days));
 }
+
+const hyp = (r) => {
+  const h = parse(r.meta).hypothesis;
+  return h ? ` / 仮説: ${short(h, 80)}` : '';
+};
 
 function postReactions(db, div) {
   const rows = postStats(db, div.id, 14);
   const withData = rows.filter((r) => r.imp != null || r.clk != null);
   if (!withData.length) {
     return `### 投稿ごとの反応（直近14日）\n- 投稿ごとの数字はまだありません（数字は捏造せず、承認された投稿の傾向だけで判断してください）\n` +
-      `- 承認済みの投稿: ${rows.length}件${rows.length ? '\n' + rows.slice(0, 10).map((r) => `  - ${parse(r.meta).theme || '?'}: ${short(r.preview_text, 60)}`).join('\n') : ''}`;
+      `- 承認済みの投稿: ${rows.length}件${rows.length ? '\n' + rows.slice(0, 10).map((r) => `  - ${parse(r.meta).theme || '?'}${hyp(r)}: ${short(r.preview_text, 60)}`).join('\n') : ''}`;
   }
-  return `### 投稿ごとの反応（直近14日・インプレッション順）\n` + withData.slice(0, 15).map((r) =>
-    `- テーマ: ${parse(r.meta).theme || '?'} / インプ: ${r.imp ?? '不明'} / クリック: ${r.clk ?? '不明'} / ${short(r.preview_text, 60)}`).join('\n');
+  const noData = rows.filter((r) => r.imp == null && r.clk == null);
+  return `### 投稿ごとの反応（直近14日・インプレッション順。数字は入力日時点の累計）\n` + withData.slice(0, 15).map((r) =>
+    `- テーマ: ${parse(r.meta).theme || '?'}${hyp(r)} / インプ: ${r.imp ?? '不明'} / クリック: ${r.clk ?? '不明'}（${r.metrics_date}時点） / ${short(r.preview_text, 60)}`).join('\n') +
+    (noData.length ? `\n- 数字が未入力の承認済み投稿: ${noData.length}件（反応は不明として扱う）` +
+      noData.slice(0, 5).map((r) => `\n  - ${parse(r.meta).theme || '?'}${hyp(r)}: ${short(r.preview_text, 40)}`).join('') : '');
 }
 
 function rejections(db, div) {

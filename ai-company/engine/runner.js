@@ -85,9 +85,12 @@ function saveOutputs({ rec, cfg, taskId, parsed, expect, jobId }) {
     if (expect?.[o.kind] && counts[o.kind] > expect[o.kind]) continue;
     const { body, warnings } = checkOutput(o.kind, o.body, { ...(cfg.checks || {}), prohibited: cfg.prohibited_words || [] });
     if (!body.trim()) continue;
+    // 仮説（1行）。X投稿は「伸びた型」か「新しい仮説」かを必ず書かせる
+    const hypothesis = o.hypothesis ? String(o.hypothesis).replace(/\s+/g, ' ').trim().slice(0, 200) : null;
+    if (!hypothesis && o.kind === 'x_post' && jobId !== 'revise') warnings.push('仮説（hypothesis）が書かれていません');
     const file = writeOutputFile(cfg.slug, o.kind, counts[o.kind], body);
     const meta = {
-      theme: parsed.theme || null, theme_reason: parsed.theme_reason || null, notes: o.notes || null, job: jobId,
+      theme: parsed.theme || null, theme_reason: parsed.theme_reason || null, hypothesis, notes: o.notes || null, job: jobId,
       warnings, questions: Array.isArray(parsed.questions) ? parsed.questions.filter(Boolean) : [],
     };
     ids.push(rec.save_output({ task_id: taskId, kind: o.kind, file_path: file, preview_text: body.slice(0, 160),
